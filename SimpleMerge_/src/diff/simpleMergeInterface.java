@@ -57,7 +57,7 @@ public class simpleMergeInterface extends JFrame {
 	private Highlighter highlighter1;
 	private Highlighter highlighter2;
 
-	private String leftString, rightString; // diff_match_patch À§ÇÑ string
+	private String leftString, rightString; // diff_match_patch ìœ„í•œ string
 	FileDialog openDialog1, openDialog2;
 
 	Runnable doScroll = new Runnable() {
@@ -90,7 +90,7 @@ public class simpleMergeInterface extends JFrame {
 				if(i==0){
 				if (linkDiff.get(i).operation == diff_match_patch.Operation.DELETE) {
 					if (linkDiff.get(i + 1).operation == diff_match_patch.Operation.INSERT) {
-						// ¸Â´Â°Ô ÀÖÀ½
+						// ë§ëŠ”ê²Œ ìˆìŒ
 						delete = linkDiff.get(i).text;
 						insert = linkDiff.get(i + 1).text;
 						while (true) {
@@ -121,7 +121,7 @@ public class simpleMergeInterface extends JFrame {
 						}
 
 					} else {
-						// delete¸¸ ÀÖÀ½
+						// deleteë§Œ ìˆìŒ
 						delete = linkDiff.get(i).text;
 						while (true) {
 							deleteNum = delete.indexOf("\n", deleteNum + 1);
@@ -137,8 +137,8 @@ public class simpleMergeInterface extends JFrame {
 					}
 
 				}
-				if (linkDiff.get(i).operation == diff_match_patch.Operation.INSERT) {// insert¸¸
-																							// ÀÖÀ½
+				if (linkDiff.get(i).operation == diff_match_patch.Operation.INSERT) {// insertë§Œ
+																							// ìˆìŒ
 					insert = linkDiff.get(i).text;
 					while (true) {
 						deleteNum = insert.indexOf("\n", deleteNum + 1);
@@ -157,7 +157,7 @@ public class simpleMergeInterface extends JFrame {
 				if (linkDiff.get(i).operation == diff_match_patch.Operation.EQUAL) {
 					if (linkDiff.get(i + 1).operation == diff_match_patch.Operation.DELETE) {
 						if (linkDiff.get(i + 2).operation == diff_match_patch.Operation.INSERT) {
-							// ¸Â´Â°Ô ÀÖÀ½
+							// ë§ëŠ”ê²Œ ìˆìŒ
 							delete = linkDiff.get(i + 1).text;
 							insert = linkDiff.get(i + 2).text;
 							while (true) {
@@ -188,7 +188,7 @@ public class simpleMergeInterface extends JFrame {
 							}
 
 						} else {
-							// delete¸¸ ÀÖÀ½
+							// deleteë§Œ ìˆìŒ
 							delete = linkDiff.get(i + 1).text;
 							while (true) {
 								deleteNum = delete.indexOf("\n", deleteNum + 1);
@@ -204,8 +204,8 @@ public class simpleMergeInterface extends JFrame {
 						}
 
 					}
-					if (linkDiff.get(i + 1).operation == diff_match_patch.Operation.INSERT) {// insert¸¸
-																								// ÀÖÀ½
+					if (linkDiff.get(i + 1).operation == diff_match_patch.Operation.INSERT) {// insertë§Œ
+																								// ìˆìŒ
 						insert = linkDiff.get(i + 1).text;
 						while (true) {
 							deleteNum = insert.indexOf("\n", deleteNum + 1);
@@ -279,8 +279,8 @@ public class simpleMergeInterface extends JFrame {
 			String cmd = e.getActionCommand();
 			switch (cmd) {
 			case "Open Left":
-				openDialog1 = new FileDialog(new simpleMergeInterface(), "¿­±â", FileDialog.LOAD);
-				openDialog1.setDirectory("."); // .Àº Áö±İÆú´õ
+				openDialog1 = new FileDialog(new simpleMergeInterface(), "ì—´ê¸°", FileDialog.LOAD);
+				openDialog1.setDirectory("."); // .ì€ ì§€ê¸ˆí´ë”
 				openDialog1.setVisible(true);
 
 				if (openDialog1.getFile() == null)
@@ -292,7 +292,7 @@ public class simpleMergeInterface extends JFrame {
 					SwingUtilities.invokeLater(doScroll);
 					String line;
 					while ((line = reader.readLine()) != null) {
-						txtArea1.append(line + "\n"); // ÇÑÁÙ¾¿ TextArea¿¡ Ãß°¡
+						txtArea1.append(line + "\n"); // í•œì¤„ì”© TextAreaì— ì¶”ê°€
 					}
 					reader.close();
 					setTitle(openDialog1.getFile());
@@ -331,8 +331,8 @@ public class simpleMergeInterface extends JFrame {
 				}
 				break;
 			case "Open Right":
-				openDialog2 = new FileDialog(new simpleMergeInterface(), "¿­±â", FileDialog.LOAD);
-				openDialog2.setDirectory("."); // .Àº Áö±İÆú´õ
+				openDialog2 = new FileDialog(new simpleMergeInterface(), "ì—´ê¸°", FileDialog.LOAD);
+				openDialog2.setDirectory("."); // .ì€ ì§€ê¸ˆí´ë”
 				openDialog2.setVisible(true);
 
 				if (openDialog2.getFile() == null)
@@ -344,7 +344,7 @@ public class simpleMergeInterface extends JFrame {
 					SwingUtilities.invokeLater(doScroll);
 					String line;
 					while ((line = reader.readLine()) != null) {
-						txtArea2.append(line + "\n"); // ÇÑÁÙ¾¿ TextArea¿¡ Ãß°¡
+						txtArea2.append(line + "\n"); // í•œì¤„ì”© TextAreaì— ì¶”ê°€
 					}
 					reader.close();
 					setTitle(openDialog2.getFile());
@@ -383,43 +383,43 @@ public class simpleMergeInterface extends JFrame {
 				break;
 			case "Save":
 				if (openDialog1.getFile() == null)
-					return; // ÀÌ°É»©¸é Ãë¼Ò¸¦ ÇØµµ ÀúÀåÀÌµÊ
+					return; // ì´ê±¸ë¹¼ë©´ ì·¨ì†Œë¥¼ í•´ë„ ì €ì¥ì´ë¨
 				try {
 					BufferedWriter writer = new BufferedWriter(
 							new FileWriter(openDialog1.getDirectory() + openDialog1.getFile()));
 					writer.write(txtArea1.getText());
 					writer.close();
-					setTitle(openDialog1.getFile() + " - ¸Ş¸ğÀå");
+					setTitle(openDialog1.getFile() + " - ë©”ëª¨ì¥");
 				} catch (Exception e2) {
 					System.out.println("ERROR : SAVE LEFT FILE");
 				}
 				if (openDialog2.getFile() == null)
-					return; // ÀÌ°É»©¸é Ãë¼Ò¸¦ ÇØµµ ÀúÀåÀÌµÊ
+					return; // ì´ê±¸ë¹¼ë©´ ì·¨ì†Œë¥¼ í•´ë„ ì €ì¥ì´ë¨
 				try {
 					BufferedWriter writer = new BufferedWriter(
 							new FileWriter(openDialog2.getDirectory() + openDialog2.getFile()));
 					writer.write(txtArea2.getText());
 					writer.close();
-					setTitle(openDialog2.getFile() + " - ¸Ş¸ğÀå");
+					setTitle(openDialog2.getFile() + " - ë©”ëª¨ì¥");
 				} catch (Exception e2) {
 					System.out.println("ERROR : SAVE LEFT FILE");
 				}
 				// save changed file in the same file route, name
 				break;
 			case "Save Left As...":
-				// 1.FileDialog¸¦ ¿­¾î ÀúÀå °æ·Î ¹× ÆÄÀÏ¸í ÁöÁ¤
-				FileDialog saveDialog1 = new FileDialog(new simpleMergeInterface(), "ÀúÀå", FileDialog.SAVE);
-				saveDialog1.setDirectory("."); // .Àº Áö±İÆú´õ
+				// 1.FileDialogë¥¼ ì—´ì–´ ì €ì¥ ê²½ë¡œ ë° íŒŒì¼ëª… ì§€ì •
+				FileDialog saveDialog1 = new FileDialog(new simpleMergeInterface(), "ì €ì¥", FileDialog.SAVE);
+				saveDialog1.setDirectory("."); // .ì€ ì§€ê¸ˆí´ë”
 				saveDialog1.setVisible(true);
-				// 2. FileDialog°¡ ºñÁ¤»ó Á¾·áµÇ¾úÀ»¶§
+				// 2. FileDialogê°€ ë¹„ì •ìƒ ì¢…ë£Œë˜ì—ˆì„ë•Œ
 				if (saveDialog1.getFile() == null)
-					return; // ÀÌ°É»©¸é Ãë¼Ò¸¦ ÇØµµ ÀúÀåÀÌµÊ
+					return; // ì´ê±¸ë¹¼ë©´ ì·¨ì†Œë¥¼ í•´ë„ ì €ì¥ì´ë¨
 				String savedfName1 = saveDialog1.getDirectory() + saveDialog1.getFile();
 				try {
 					BufferedWriter writer = new BufferedWriter(new FileWriter(savedfName1));
 					writer.write(txtArea2.getText());
 					writer.close();
-					setTitle(saveDialog1.getFile() + " - ¸Ş¸ğÀå");
+					setTitle(saveDialog1.getFile() + " - ë©”ëª¨ì¥");
 				} catch (Exception e2) {
 					System.out.println("ERROR : SAVE RIGHT FILE");
 				}
@@ -427,19 +427,19 @@ public class simpleMergeInterface extends JFrame {
 				break;
 
 			case "Save Right As...":
-				// 1.FileDialog¸¦ ¿­¾î ÀúÀå °æ·Î ¹× ÆÄÀÏ¸í ÁöÁ¤
-				FileDialog saveDialog2 = new FileDialog(new simpleMergeInterface(), "ÀúÀå", FileDialog.SAVE);
-				saveDialog2.setDirectory("."); // .Àº Áö±İÆú´õ
+				// 1.FileDialogë¥¼ ì—´ì–´ ì €ì¥ ê²½ë¡œ ë° íŒŒì¼ëª… ì§€ì •
+				FileDialog saveDialog2 = new FileDialog(new simpleMergeInterface(), "ì €ì¥", FileDialog.SAVE);
+				saveDialog2.setDirectory("."); // .ì€ ì§€ê¸ˆí´ë”
 				saveDialog2.setVisible(true);
-				// 2. FileDialog°¡ ºñÁ¤»ó Á¾·áµÇ¾úÀ»¶§
+				// 2. FileDialogê°€ ë¹„ì •ìƒ ì¢…ë£Œë˜ì—ˆì„ë•Œ
 				if (saveDialog2.getFile() == null)
-					return; // ÀÌ°É»©¸é Ãë¼Ò¸¦ ÇØµµ ÀúÀåÀÌµÊ
+					return; // ì´ê±¸ë¹¼ë©´ ì·¨ì†Œë¥¼ í•´ë„ ì €ì¥ì´ë¨
 				String savedfName2 = saveDialog2.getDirectory() + saveDialog2.getFile();
 				try {
 					BufferedWriter writer = new BufferedWriter(new FileWriter(savedfName2));
 					writer.write(txtArea2.getText());
 					writer.close();
-					setTitle(saveDialog2.getFile() + " - ¸Ş¸ğÀå");
+					setTitle(saveDialog2.getFile() + " - ë©”ëª¨ì¥");
 				} catch (Exception e2) {
 					System.out.println("ERROR : SAVE RIGHT FILE");
 				}
@@ -474,7 +474,7 @@ public class simpleMergeInterface extends JFrame {
 			scrollPane2.setAutoscrolls(true);
 			getContentPane().add(scrollPane1);
 			getContentPane().add(scrollPane2);
-			setVisible(true);
+			//setVisible(true);  // ì°½ì´ ì—¬ëŸ¬ê°œ ëœ¨ëŠ” ì˜¤ë¥˜ ìˆ˜ì •
 
 			highlighter1 = txtArea1.getHighlighter();
 			highlighter2 = txtArea2.getHighlighter();
