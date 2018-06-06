@@ -1,13 +1,12 @@
 package diff;
 
 import java.awt.FlowLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 
 import static java.awt.event.InputEvent.CTRL_DOWN_MASK;
 import java.awt.BorderLayout;
 import java.awt.Button;
 import java.awt.Color;
+import java.awt.Event;
 import java.awt.FileDialog;
 import java.awt.GridLayout;
 import java.awt.MenuItem;
@@ -22,6 +21,8 @@ import javax.swing.JTextArea;
 import javax.swing.JScrollPane;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.AbstractAction;
+import javax.swing.Action;
 import javax.swing.ButtonGroup;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFrame;
@@ -30,12 +31,23 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
+import javax.swing.event.UndoableEditEvent;
+import javax.swing.event.UndoableEditListener;
 import javax.swing.text.DefaultHighlighter;
+import javax.swing.text.Document;
 import javax.swing.text.Highlighter;
 import javax.swing.text.Highlighter.HighlightPainter;
+
+import javax.swing.undo.CannotRedoException;
+import javax.swing.undo.CannotUndoException;
+import javax.swing.undo.UndoManager;
+
 import java.awt.event.*;
 import java.io.File;
 import diff.diff_match_patch;
+import diff.simpleMergeInterface.RedoAction;
+import diff.simpleMergeInterface.UndoAction;
+import diff.simpleMergeInterface.UndoHandler;
 
 public class simpleMergeInterface extends JFrame {
 	private static final long serialVersionUID = 1L;
@@ -49,7 +61,8 @@ public class simpleMergeInterface extends JFrame {
 	LinkedList<diff_match_patch.Diff> linkDiff = new LinkedList<diff_match_patch.Diff>();
 
 	private JMenuBar menuBar = new JMenuBar(); // Window Menu Bar
-	private JMenuItem openItem, openItem1, openItem2, saveItem, saveItem1, saveItem2;
+	private JMenuItem openItem, openItem1, openItem2, saveItem, saveItem1, saveItem2,
+			mergeItem1, mergeItem2, undoMenuItem, redoMenuItem;
 
 	private HighlightPainter painterY = new DefaultHighlighter.DefaultHighlightPainter(Color.yellow);
 	private HighlightPainter painterP = new DefaultHighlighter.DefaultHighlightPainter(Color.pink);
@@ -61,6 +74,14 @@ public class simpleMergeInterface extends JFrame {
 	FileDialog openDialog1;
 	FileDialog openDialog2;
 	File[] files;
+	
+	// undo and redo
+	private Document editorPaneDocument1, editorPaneDocument2;
+	protected UndoHandler undoHandler = new UndoHandler();
+	protected UndoManager undoManager = new UndoManager();
+	private UndoAction undoAction1 = null, undoAction2 = null;
+	private RedoAction redoAction1 = null, redoAction2 = null;
+
 	Runnable doScroll = new Runnable() {
 		public void run() {
 			txtArea1.setCaretPosition(0);
@@ -120,6 +141,102 @@ public class simpleMergeInterface extends JFrame {
 			txtArea2.addKeyListener(this);
 		}
 	}
+	
+	// java undo and redo action classes
+	class UndoHandler implements UndoableEditListener
+	{
+	  /**
+	   * Messaged when the Document has created an edit, the edit is added to
+	   * <code>undoManager</code>, an instance of UndoManager.
+	   */
+	  public void undoableEditHappened(UndoableEditEvent e)
+	  {
+	    undoManager.addEdit(e.getEdit());
+	    undoAction1.update(); undoAction2.update();
+	    redoAction1.update(); redoAction2.update();
+	  }
+
+	}
+
+	class UndoAction extends AbstractAction
+	{
+	  public UndoAction()
+	  {
+	    super("Undo");
+	    setEnabled(false);
+	  }
+
+	  public void actionPerformed(ActionEvent e)
+	  {
+	    try
+	    {
+	      undoManager.undo();
+	    }
+	    catch (CannotUndoException ex)
+	    {
+	      // TODO deal with this
+	      //ex.printStackTrace();
+	    }
+	    update();
+	    redoAction1.update();
+	    redoAction2.update();
+	  }
+
+	  protected void update()
+	  {
+	    if (undoManager.canUndo())
+	    {
+	      setEnabled(true);
+	      putValue(Action.NAME, undoManager.getUndoPresentationName());
+	    }
+	    else
+	    {
+	      setEnabled(false);
+	      putValue(Action.NAME, "Undo");
+	    }
+	  }
+	}
+
+	class RedoAction extends AbstractAction
+	{
+	  public RedoAction()
+	  {
+	    super("Redo");
+	    setEnabled(false);
+	  }
+
+	  public void actionPerformed(ActionEvent e)
+	  {
+	    try
+	    {
+	      undoManager.redo();
+	    }
+	    catch (CannotRedoException ex)
+	    {
+	      // TODO deal with this
+	      ex.printStackTrace();
+	    }
+	    update();
+	    undoAction1.update();
+	    undoAction2.update();
+	  }
+
+	  protected void update()
+	  {
+	    if (undoManager.canRedo())
+	    {
+	      setEnabled(true);
+	      putValue(Action.NAME, undoManager.getRedoPresentationName());
+	    }
+	    else
+	    {
+	      setEnabled(false);
+	      putValue(Action.NAME, "Redo");
+	    }
+	  }
+	}
+
+	
 	class MenuActionListener implements ActionListener {
 
 		public void actionPerformed(ActionEvent e) {
@@ -284,11 +401,37 @@ public class simpleMergeInterface extends JFrame {
 			highlighter1 = txtArea1.getHighlighter();
 			highlighter2 = txtArea2.getHighlighter();
 
+			editorPaneDocument1 = txtArea1.getDocument();
+			editorPaneDocument1.addUndoableEditListener(undoHandler);
+
+			editorPaneDocument2 = txtArea2.getDocument();
+			editorPaneDocument2.addUndoableEditListener(undoHandler);
+
+			KeyStroke undoKeystroke = KeyStroke.getKeyStroke(KeyEvent.VK_Z, Event.META_MASK);
+			KeyStroke redoKeystroke = KeyStroke.getKeyStroke(KeyEvent.VK_Y, Event.META_MASK);
+			
+			undoAction1 = new UndoAction();
+			txtArea1.getInputMap().put(undoKeystroke, "undoKeystroke");
+			txtArea1.getActionMap().put("undoKeystroke", undoAction1);
+			
+			redoAction1 = new RedoAction();
+			txtArea1.getInputMap().put(redoKeystroke, "redoKeystroke");
+			txtArea1.getActionMap().put("redoKeystroke", redoAction1);
+
+			undoAction2 = new UndoAction();
+			txtArea2.getInputMap().put(undoKeystroke, "undoKeystroke");
+			txtArea2.getActionMap().put("undoKeystroke", undoAction2);
+			
+			redoAction2 = new RedoAction();
+			txtArea2.getInputMap().put(redoKeystroke, "redoKeystroke");
+			txtArea2.getActionMap().put("redoKeystroke", redoAction2);
+
 			JMenu fileMenu = new JMenu("File"); // Create File menu
 			fileMenu.setMnemonic('F'); // Create shortcut
 			setJMenuBar(menuBar);
 			// newItem = fileMenu.add("New");
 			openItem = fileMenu.add("Open");
+
 			// closeItem = fileMenu.add("Close");
 			fileMenu.addSeparator();
 			saveItem = fileMenu.add("Save");
@@ -297,9 +440,32 @@ public class simpleMergeInterface extends JFrame {
 			fileMenu.addSeparator();
 			// printItem = fileMenu.add("Print");
 
+			// Merge menu 
+			JMenu mergeMenu = new JMenu("Merge");
+			mergeMenu.setMnemonic('M');
+			mergeItem1 = mergeMenu.add("Merge to Right");
+			mergeItem2 = mergeMenu.add("Merge to Left");
+			
+			// Edit menu
+			JMenu editMenu = new JMenu("Edit");
+			editMenu.setMnemonic('E');
+			//undoMenuItem = editMenu.add("Undo");
+			//redoMenuItem = editMenu.add("Redo");
+			undoMenuItem = new JMenuItem(undoAction1);
+			redoMenuItem = new JMenuItem(redoAction1);//
+
+			editMenu.add(undoMenuItem);
+			editMenu.add(redoMenuItem);
+			editMenu.addSeparator();
+
 			menuBar.add(fileMenu);
+			menuBar.add(mergeMenu);
+			menuBar.add(editMenu);
+
 			openItem.setAccelerator(KeyStroke.getKeyStroke('O', CTRL_DOWN_MASK));
 			saveItem.setAccelerator(KeyStroke.getKeyStroke('S', CTRL_DOWN_MASK));
+			undoMenuItem.setAccelerator(KeyStroke.getKeyStroke('Z', CTRL_DOWN_MASK));
+			redoMenuItem.setAccelerator(KeyStroke.getKeyStroke('Y', CTRL_DOWN_MASK));
 			openItem.addActionListener(this);
 			saveItem.addActionListener(this);
 			saveItem1.addActionListener(this);
