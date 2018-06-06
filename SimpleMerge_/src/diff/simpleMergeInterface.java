@@ -34,7 +34,7 @@ import javax.swing.text.DefaultHighlighter;
 import javax.swing.text.Highlighter;
 import javax.swing.text.Highlighter.HighlightPainter;
 import java.awt.event.*;
-
+import java.io.File;
 import diff.diff_match_patch;
 
 public class simpleMergeInterface extends JFrame {
@@ -58,8 +58,9 @@ public class simpleMergeInterface extends JFrame {
 	private Highlighter highlighter2;
 
 	private String leftString, rightString; // diff_match_patch 위한 string
-	FileDialog openDialog1, openDialog2;
-
+	FileDialog openDialog1;
+	FileDialog openDialog2;
+	File[] files;
 	Runnable doScroll = new Runnable() {
 		public void run() {
 			txtArea1.setCaretPosition(0);
@@ -72,6 +73,240 @@ public class simpleMergeInterface extends JFrame {
 			txtArea2.setCaretPosition(txtArea2.getDocument().getLength());
 		}
 	};
+
+	public simpleMergeInterface() {
+		openDialog1 = new FileDialog(this, "FileDialog");
+		openDialog1.setMultipleMode(true);
+		MenuActionListener m = new MenuActionListener();
+		TextKeyListener t = new TextKeyListener();
+	}
+	class TextKeyListener implements KeyListener{
+		public void keyPressed(KeyEvent e){
+			int txt1=-1,txt2=-1;
+			int Ctxt1=0,Ctxt2=0;
+			while (true) {
+				txt1 = txtArea1.getText().indexOf("\n", txt1 + 1);
+				if (txt1 != -1) {
+					Ctxt1++;
+				} else
+					break;
+			}
+			while (true) {
+				txt2 = txtArea2.getText().indexOf("\n", txt2 + 1);
+				if (txt2 != -1) {
+					Ctxt2++;
+				} else
+					break;
+			}
+			if(Ctxt1>Ctxt2){
+				for (int k = 0; k < Ctxt1-Ctxt2; k++) {
+					txtArea2.append("\n");
+				}
+			}
+			if(Ctxt1<Ctxt2){
+				for (int k = 0; k < Ctxt2-Ctxt1; k++) {
+					txtArea1.append("\n");
+				}
+			}
+		}
+		public void keyReleased(KeyEvent e){ 
+			
+		}
+		public void keyTyped(KeyEvent e){ 
+			
+		}
+		public TextKeyListener(){
+			txtArea1.addKeyListener(this);
+			txtArea2.addKeyListener(this);
+		}
+	}
+	class MenuActionListener implements ActionListener {
+
+		public void actionPerformed(ActionEvent e) {
+			
+			/////////////////////////////////
+			String cmd = e.getActionCommand();
+			switch (cmd) {
+			case "Open":
+				openDialog1.setDirectory(".");
+				openDialog1.setVisible(true);
+				files = openDialog1.getFiles();
+				if (files.length != 2)
+					return;
+
+				String dfName1 = files[0].getPath();
+				String dfName2 = files[1].getPath();
+				
+				try {
+					BufferedReader reader = new BufferedReader(new FileReader(dfName1));
+					txtArea1.setText("");
+					SwingUtilities.invokeLater(doScroll);
+					String line;
+					while ((line = reader.readLine()) != null) {
+						txtArea1.append(line + "\n"); // 한줄씩 TextArea에 추가
+					}
+					reader.close();
+					
+					setTitle(openDialog1.getFile());
+					BufferedReader reader2 = new BufferedReader(new FileReader(dfName2));
+					txtArea2.setText("");
+					
+					while ((line = reader2.readLine()) != null) {
+						txtArea2.append(line + "\n"); // 한줄씩 TextArea에 추가
+					}
+					reader2.close();
+					
+					checkDiff();
+					for (diff_match_patch.Diff d : linkDiff) {
+						if (d.operation == diff_match_patch.Operation.DELETE
+								|| d.operation == diff_match_patch.Operation.EQUAL) {
+							txtArea1.append(d.text);
+						}
+					}
+					for (diff_match_patch.Diff d : linkDiff) {
+						if (d.operation == diff_match_patch.Operation.DELETE) {
+							System.out.println(d.text);
+							int p0 = txtArea1.getText().indexOf(d.text);
+							int p1 = p0 + d.text.length();
+							highlighter1.addHighlight(p0, p1, painterY);
+						}
+					}
+
+					for (diff_match_patch.Diff d : linkDiff) {
+						if (d.operation == diff_match_patch.Operation.INSERT
+								|| d.operation == diff_match_patch.Operation.EQUAL) {
+							txtArea2.append(d.text);
+						}
+					}
+					for (diff_match_patch.Diff d : linkDiff) {
+						if (d.operation == diff_match_patch.Operation.INSERT) {
+							System.out.println(d.text);
+							int p0 = txtArea2.getText().indexOf(d.text);
+							int p1 = p0 + d.text.length();
+							highlighter2.addHighlight(p0, p1, painterY);
+						}
+					}
+				} catch (Exception e2) {
+					System.out.println("ERROR : OPEN LEFT FILE");
+				}
+				break;
+			case "Save":
+				if (files[0].getPath() == null)
+					return; // 이걸빼면 취소를 해도 저장이됨
+				try {
+					BufferedWriter writer = new BufferedWriter(
+							new FileWriter(files[0].getPath()));
+					writer.write(txtArea1.getText());
+					writer.close();
+					setTitle(files[0].getName());
+				} catch (Exception e2) {
+					System.out.println("ERROR : SAVE LEFT FILE");
+				}
+				if (files[1].getPath() == null)
+					return; // 이걸빼면 취소를 해도 저장이됨
+				try {
+					BufferedWriter writer = new BufferedWriter(
+							new FileWriter(files[1].getPath()));
+					writer.write(txtArea2.getText());
+					writer.close();
+					setTitle(files[1].getName());
+				} catch (Exception e2) {
+					System.out.println("ERROR : SAVE RIGHT FILE");
+				}
+				// save changed file in the same file route, name
+				break;
+			case "Save Left As...":
+				// 1.FileDialog를 열어 저장 경로 및 파일명 지정
+				FileDialog saveDialog1 = new FileDialog(new simpleMergeInterface(), "저장", FileDialog.SAVE);
+				saveDialog1.setDirectory("."); // .은 지금폴더
+				saveDialog1.setVisible(true);
+				// 2. FileDialog가 비정상 종료되었을때
+				if (saveDialog1.getFile() == null)
+					return; // 이걸빼면 취소를 해도 저장이됨
+				String savedfName1 = saveDialog1.getDirectory() + saveDialog1.getFile();
+				try {
+					BufferedWriter writer = new BufferedWriter(new FileWriter(savedfName1));
+					writer.write(txtArea2.getText());
+					writer.close();
+					setTitle(saveDialog1.getFile() + " - 메모장");
+				} catch (Exception e2) {
+					System.out.println("ERROR : SAVE LEFT FILE");
+				}
+				// save changed file in the same file route, name
+				break;
+
+			case "Save Right As...":
+				// 1.FileDialog를 열어 저장 경로 및 파일명 지정
+				FileDialog saveDialog2 = new FileDialog(new simpleMergeInterface(), "저장", FileDialog.SAVE);
+				saveDialog2.setDirectory("."); // .은 지금폴더
+				saveDialog2.setVisible(true);
+				// 2. FileDialog가 비정상 종료되었을때
+				if (saveDialog2.getFile() == null)
+					return; // 이걸빼면 취소를 해도 저장이됨
+				String savedfName2 = saveDialog2.getDirectory() + saveDialog2.getFile();
+				try {
+					BufferedWriter writer = new BufferedWriter(new FileWriter(savedfName2));
+					writer.write(txtArea2.getText());
+					writer.close();
+					setTitle(saveDialog2.getFile() + " - 메모장");
+				} catch (Exception e2) {
+					System.out.println("ERROR : SAVE RIGHT FILE");
+				}
+				// save changed file in the same file route, name
+				break;
+
+			}
+		}
+
+		public MenuActionListener() {
+			InitLayout();//
+			setDefaultCloseOperation(EXIT_ON_CLOSE);
+
+		}
+
+		public void InitLayout() {
+			setLocationByPlatform(true);
+			setLayout(new GridLayout(1, 2));
+			setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+
+			txtArea1 = new JTextArea();
+			txtArea2 = new JTextArea();
+
+			scrollPane1 = new JScrollPane(txtArea1);
+			scrollPane2 = new JScrollPane(txtArea2);
+			
+			scrollPane1.getVerticalScrollBar().setModel(scrollPane2.getVerticalScrollBar().getModel());
+			scrollPane1.setAutoscrolls(true);
+			scrollPane2.setAutoscrolls(true);
+			getContentPane().add(scrollPane1);
+			getContentPane().add(scrollPane2);
+
+			highlighter1 = txtArea1.getHighlighter();
+			highlighter2 = txtArea2.getHighlighter();
+
+			JMenu fileMenu = new JMenu("File"); // Create File menu
+			fileMenu.setMnemonic('F'); // Create shortcut
+			setJMenuBar(menuBar);
+			// newItem = fileMenu.add("New");
+			openItem = fileMenu.add("Open");
+			// closeItem = fileMenu.add("Close");
+			fileMenu.addSeparator();
+			saveItem = fileMenu.add("Save");
+			saveItem1 = fileMenu.add("Save Left As...");
+			saveItem2 = fileMenu.add("Save Right As...");
+			fileMenu.addSeparator();
+			// printItem = fileMenu.add("Print");
+
+			menuBar.add(fileMenu);
+			openItem.setAccelerator(KeyStroke.getKeyStroke('O', CTRL_DOWN_MASK));
+			saveItem.setAccelerator(KeyStroke.getKeyStroke('S', CTRL_DOWN_MASK));
+			openItem.addActionListener(this);
+			saveItem.addActionListener(this);
+			saveItem1.addActionListener(this);
+			saveItem2.addActionListener(this);
+		}
+
+	}
 
 	void checkDiff() {
 		if (txtArea1.getText() != null & txtArea2.getText() != null) {
@@ -225,287 +460,6 @@ public class simpleMergeInterface extends JFrame {
 			txtArea1.setText("");
 			txtArea2.setText("");
 		}
-	}
-
-	public simpleMergeInterface() {
-		MenuActionListener m = new MenuActionListener();
-		TextKeyListener t = new TextKeyListener();
-	}
-	class TextKeyListener implements KeyListener{
-		public void keyPressed(KeyEvent e){
-			int txt1=-1,txt2=-1;
-			int Ctxt1=0,Ctxt2=0;
-			while (true) {
-				txt1 = txtArea1.getText().indexOf("\n", txt1 + 1);
-				if (txt1 != -1) {
-					Ctxt1++;
-				} else
-					break;
-			}
-			while (true) {
-				txt2 = txtArea2.getText().indexOf("\n", txt2 + 1);
-				if (txt2 != -1) {
-					Ctxt2++;
-				} else
-					break;
-			}
-			if(Ctxt1>Ctxt2){
-				for (int k = 0; k < Ctxt1-Ctxt2; k++) {
-					txtArea2.append("\n");
-				}
-			}
-			if(Ctxt1<Ctxt2){
-				for (int k = 0; k < Ctxt2-Ctxt1; k++) {
-					txtArea1.append("\n");
-				}
-			}
-		}
-		public void keyReleased(KeyEvent e){ 
-			
-		}
-		public void keyTyped(KeyEvent e){ 
-			
-		}
-		public TextKeyListener(){
-			txtArea1.addKeyListener(this);
-			txtArea2.addKeyListener(this);
-		}
-	}
-	class MenuActionListener implements ActionListener {
-
-		public void actionPerformed(ActionEvent e) {
-			
-			/////////////////////////////////
-			String cmd = e.getActionCommand();
-			switch (cmd) {
-			case "Open Left":
-				openDialog1 = new FileDialog(new simpleMergeInterface(), "열기", FileDialog.LOAD);
-				openDialog1.setDirectory("."); // .은 지금폴더
-				openDialog1.setVisible(true);
-
-				if (openDialog1.getFile() == null)
-					return;
-				String dfName1 = openDialog1.getDirectory() + openDialog1.getFile();
-				try {
-					BufferedReader reader = new BufferedReader(new FileReader(dfName1));
-					txtArea1.setText("");
-					SwingUtilities.invokeLater(doScroll);
-					String line;
-					while ((line = reader.readLine()) != null) {
-						txtArea1.append(line + "\n"); // 한줄씩 TextArea에 추가
-					}
-					reader.close();
-					setTitle(openDialog1.getFile());
-					checkDiff();
-					for (diff_match_patch.Diff d : linkDiff) {
-						if (d.operation == diff_match_patch.Operation.DELETE
-								|| d.operation == diff_match_patch.Operation.EQUAL) {
-							txtArea1.append(d.text);
-						}
-					}
-					for (diff_match_patch.Diff d : linkDiff) {
-						if (d.operation == diff_match_patch.Operation.DELETE) {
-							System.out.println(d.text);
-							int p0 = txtArea1.getText().indexOf(d.text);
-							int p1 = p0 + d.text.length();
-							highlighter1.addHighlight(p0, p1, painterY);
-						}
-					}
-
-					for (diff_match_patch.Diff d : linkDiff) {
-						if (d.operation == diff_match_patch.Operation.INSERT
-								|| d.operation == diff_match_patch.Operation.EQUAL) {
-							txtArea2.append(d.text);
-						}
-					}
-					for (diff_match_patch.Diff d : linkDiff) {
-						if (d.operation == diff_match_patch.Operation.INSERT) {
-							System.out.println(d.text);
-							int p0 = txtArea2.getText().indexOf(d.text);
-							int p1 = p0 + d.text.length();
-							highlighter2.addHighlight(p0, p1, painterY);
-						}
-					}
-				} catch (Exception e2) {
-					System.out.println("ERROR : OPEN LEFT FILE");
-				}
-				break;
-			case "Open Right":
-				openDialog2 = new FileDialog(new simpleMergeInterface(), "열기", FileDialog.LOAD);
-				openDialog2.setDirectory("."); // .은 지금폴더
-				openDialog2.setVisible(true);
-
-				if (openDialog2.getFile() == null)
-					return;
-				String dfName2 = openDialog2.getDirectory() + openDialog2.getFile();
-				try {
-					BufferedReader reader = new BufferedReader(new FileReader(dfName2));
-					txtArea2.setText("");
-					SwingUtilities.invokeLater(doScroll);
-					String line;
-					while ((line = reader.readLine()) != null) {
-						txtArea2.append(line + "\n"); // 한줄씩 TextArea에 추가
-					}
-					reader.close();
-					setTitle(openDialog2.getFile());
-					checkDiff();
-					for (diff_match_patch.Diff d : linkDiff) {
-						if (d.operation == diff_match_patch.Operation.DELETE
-								|| d.operation == diff_match_patch.Operation.EQUAL) {
-							txtArea1.append(d.text);
-						}
-					}
-					for (diff_match_patch.Diff d : linkDiff) {
-						if (d.operation == diff_match_patch.Operation.DELETE) {
-							System.out.println(d.text);
-							int p0 = txtArea1.getText().indexOf(d.text);
-							int p1 = p0 + d.text.length();
-							highlighter1.addHighlight(p0, p1, painterY);
-						}
-					}
-					for (diff_match_patch.Diff d : linkDiff) {
-						if (d.operation == diff_match_patch.Operation.INSERT
-								|| d.operation == diff_match_patch.Operation.EQUAL) {
-							txtArea2.append(d.text);
-						}
-					}
-					for (diff_match_patch.Diff d : linkDiff) {
-						if (d.operation == diff_match_patch.Operation.INSERT) {
-							System.out.println(d.text);
-							int p0 = txtArea2.getText().indexOf(d.text);
-							int p1 = p0 + d.text.length();
-							highlighter2.addHighlight(p0, p1, painterY);
-						}
-					}
-				} catch (Exception e2) {
-					System.out.println("ERROR : OPEN LEFT FILE");
-				}
-				break;
-			case "Save":
-				if (openDialog1.getFile() == null)
-					return; // 이걸빼면 취소를 해도 저장이됨
-				try {
-					BufferedWriter writer = new BufferedWriter(
-							new FileWriter(openDialog1.getDirectory() + openDialog1.getFile()));
-					writer.write(txtArea1.getText());
-					writer.close();
-					setTitle(openDialog1.getFile() + " - 메모장");
-				} catch (Exception e2) {
-					System.out.println("ERROR : SAVE LEFT FILE");
-				}
-				if (openDialog2.getFile() == null)
-					return; // 이걸빼면 취소를 해도 저장이됨
-				try {
-					BufferedWriter writer = new BufferedWriter(
-							new FileWriter(openDialog2.getDirectory() + openDialog2.getFile()));
-					writer.write(txtArea2.getText());
-					writer.close();
-					setTitle(openDialog2.getFile() + " - 메모장");
-				} catch (Exception e2) {
-					System.out.println("ERROR : SAVE LEFT FILE");
-				}
-				// save changed file in the same file route, name
-				break;
-			case "Save Left As...":
-				// 1.FileDialog를 열어 저장 경로 및 파일명 지정
-				FileDialog saveDialog1 = new FileDialog(new simpleMergeInterface(), "저장", FileDialog.SAVE);
-				saveDialog1.setDirectory("."); // .은 지금폴더
-				saveDialog1.setVisible(true);
-				// 2. FileDialog가 비정상 종료되었을때
-				if (saveDialog1.getFile() == null)
-					return; // 이걸빼면 취소를 해도 저장이됨
-				String savedfName1 = saveDialog1.getDirectory() + saveDialog1.getFile();
-				try {
-					BufferedWriter writer = new BufferedWriter(new FileWriter(savedfName1));
-					writer.write(txtArea2.getText());
-					writer.close();
-					setTitle(saveDialog1.getFile() + " - 메모장");
-				} catch (Exception e2) {
-					System.out.println("ERROR : SAVE RIGHT FILE");
-				}
-				// save changed file in the same file route, name
-				break;
-
-			case "Save Right As...":
-				// 1.FileDialog를 열어 저장 경로 및 파일명 지정
-				FileDialog saveDialog2 = new FileDialog(new simpleMergeInterface(), "저장", FileDialog.SAVE);
-				saveDialog2.setDirectory("."); // .은 지금폴더
-				saveDialog2.setVisible(true);
-				// 2. FileDialog가 비정상 종료되었을때
-				if (saveDialog2.getFile() == null)
-					return; // 이걸빼면 취소를 해도 저장이됨
-				String savedfName2 = saveDialog2.getDirectory() + saveDialog2.getFile();
-				try {
-					BufferedWriter writer = new BufferedWriter(new FileWriter(savedfName2));
-					writer.write(txtArea2.getText());
-					writer.close();
-					setTitle(saveDialog2.getFile() + " - 메모장");
-				} catch (Exception e2) {
-					System.out.println("ERROR : SAVE RIGHT FILE");
-				}
-				// save changed file in the same file route, name
-				break;
-
-			}
-		}
-
-		public MenuActionListener() {
-			InitLayout();//
-			setDefaultCloseOperation(EXIT_ON_CLOSE);
-
-		}
-
-		public void InitLayout() {
-			// setLocationByPlatform(true);
-			setLayout(new GridLayout(1, 2));
-			setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-
-			txtArea1 = new JTextArea();
-			txtArea2 = new JTextArea();
-
-			scrollPane1 = new JScrollPane(txtArea1);
-			scrollPane2 = new JScrollPane(txtArea2);
-			
-//			scrollPane1.getVerticalScrollBar().setValue(Math.max(scrollPane1.getVerticalScrollBar().getMaximum(),scrollPane2.getVerticalScrollBar().getMaximum()));
-//			scrollPane2.getVerticalScrollBar().setValue(Math.max(scrollPane1.getVerticalScrollBar().getMaximum(),scrollPane2.getVerticalScrollBar().getMaximum()));
-//			scrollPane1.get
-			scrollPane1.getVerticalScrollBar().setModel(scrollPane2.getVerticalScrollBar().getModel());
-			scrollPane1.setAutoscrolls(true);
-			scrollPane2.setAutoscrolls(true);
-			getContentPane().add(scrollPane1);
-			getContentPane().add(scrollPane2);
-			//setVisible(true);  // 창이 여러개 뜨는 오류 수정
-
-			highlighter1 = txtArea1.getHighlighter();
-			highlighter2 = txtArea2.getHighlighter();
-
-			JMenu fileMenu = new JMenu("File"); // Create File menu
-			fileMenu.setMnemonic('F'); // Create shortcut
-			setJMenuBar(menuBar);
-			// newItem = fileMenu.add("New");
-			openItem = fileMenu.add("Open");
-			openItem1 = fileMenu.add("Open Left");
-			openItem2 = fileMenu.add("Open Right");
-			// closeItem = fileMenu.add("Close");
-			fileMenu.addSeparator();
-			saveItem = fileMenu.add("Save");
-			saveItem1 = fileMenu.add("Save Left As...");
-			saveItem2 = fileMenu.add("Save Right As...");
-			fileMenu.addSeparator();
-			// printItem = fileMenu.add("Print");
-
-			menuBar.add(fileMenu);
-			openItem.setAccelerator(KeyStroke.getKeyStroke('O', CTRL_DOWN_MASK));
-			saveItem.setAccelerator(KeyStroke.getKeyStroke('S', CTRL_DOWN_MASK));
-			openItem.addActionListener(this);
-			openItem1.addActionListener(this);
-			openItem2.addActionListener(this);
-			saveItem.addActionListener(this);
-			saveItem1.addActionListener(this);
-			saveItem2.addActionListener(this);
-			
-		}
-
 	}
 
 	public static void main(String[] a) {
