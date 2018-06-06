@@ -17,6 +17,7 @@ import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.LinkedList;
+import java.util.ArrayList;
 import javax.swing.JTextArea;
 import javax.swing.JScrollPane;
 import javax.swing.JOptionPane;
@@ -33,6 +34,7 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.event.UndoableEditEvent;
 import javax.swing.event.UndoableEditListener;
+import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultHighlighter;
 import javax.swing.text.Document;
 import javax.swing.text.Highlighter;
@@ -57,12 +59,15 @@ public class simpleMergeInterface extends JFrame {
 
 	boolean isLeft = false, isRight = false;
 
-	diff_match_patch diffMatchPatch = new diff_match_patch();
-	LinkedList<diff_match_patch.Diff> linkDiff = new LinkedList<diff_match_patch.Diff>();
+	private diff_match_patch diffMatchPatch = new diff_match_patch();
+	private LinkedList<diff_match_patch.Diff> linkDiff = new LinkedList<diff_match_patch.Diff>();
+	private ArrayList<int[]> leftDiffIndex = new ArrayList<int[]>(), rightDiffIndex = new ArrayList<int[]>();
+
+	private int mouseClickIndex1, mouseClickIndex2;
 
 	private JMenuBar menuBar = new JMenuBar(); // Window Menu Bar
-	private JMenuItem openItem, openItem1, openItem2, saveItem, saveItem1, saveItem2,
-			mergeItem1, mergeItem2, undoMenuItem, redoMenuItem;
+	private JMenuItem openItem, openItem1, openItem2, saveItem, saveItem1, saveItem2, mergeItem1, mergeItem2,
+			undoMenuItem, redoMenuItem;
 
 	private HighlightPainter painterY = new DefaultHighlighter.DefaultHighlightPainter(Color.yellow);
 	private HighlightPainter painterP = new DefaultHighlighter.DefaultHighlightPainter(Color.pink);
@@ -70,11 +75,10 @@ public class simpleMergeInterface extends JFrame {
 	private Highlighter highlighter1;
 	private Highlighter highlighter2;
 
-	private String leftString, rightString; // diff_match_patch 위한 string
 	FileDialog openDialog1;
 	FileDialog openDialog2;
 	File[] files;
-	
+
 	// undo and redo
 	private Document editorPaneDocument1, editorPaneDocument2;
 	protected UndoHandler undoHandler = new UndoHandler();
@@ -88,8 +92,8 @@ public class simpleMergeInterface extends JFrame {
 			txtArea2.setCaretPosition(0);
 		}
 	};
-	Runnable doScroll2 = new Runnable(){
-		public void run(){
+	Runnable doScroll2 = new Runnable() {
+		public void run() {
 			txtArea1.setCaretPosition(txtArea1.getDocument().getLength());
 			txtArea2.setCaretPosition(txtArea2.getDocument().getLength());
 		}
@@ -100,11 +104,13 @@ public class simpleMergeInterface extends JFrame {
 		openDialog1.setMultipleMode(true);
 		MenuActionListener m = new MenuActionListener();
 		TextKeyListener t = new TextKeyListener();
+		MouseEvent mouse = new MouseEvent();
 	}
-	class TextKeyListener implements KeyListener{
-		public void keyPressed(KeyEvent e){
-			int txt1=-1,txt2=-1;
-			int Ctxt1=0,Ctxt2=0;
+
+	class TextKeyListener implements KeyListener {
+		public void keyPressed(KeyEvent e) {
+			int txt1 = -1, txt2 = -1;
+			int Ctxt1 = 0, Ctxt2 = 0;
 			while (true) {
 				txt1 = txtArea1.getText().indexOf("\n", txt1 + 1);
 				if (txt1 != -1) {
@@ -119,128 +125,144 @@ public class simpleMergeInterface extends JFrame {
 				} else
 					break;
 			}
-			if(Ctxt1>Ctxt2){
-				for (int k = 0; k < Ctxt1-Ctxt2; k++) {
+			if (Ctxt1 > Ctxt2) {
+				for (int k = 0; k < Ctxt1 - Ctxt2; k++) {
 					txtArea2.append("\n");
 				}
 			}
-			if(Ctxt1<Ctxt2){
-				for (int k = 0; k < Ctxt2-Ctxt1; k++) {
+			if (Ctxt1 < Ctxt2) {
+				for (int k = 0; k < Ctxt2 - Ctxt1; k++) {
 					txtArea1.append("\n");
 				}
 			}
 		}
-		public void keyReleased(KeyEvent e){ 
-			
+
+		public void keyReleased(KeyEvent e) {
+
 		}
-		public void keyTyped(KeyEvent e){ 
-			
+
+		public void keyTyped(KeyEvent e) {
+
 		}
-		public TextKeyListener(){
+
+		public TextKeyListener() {
 			txtArea1.addKeyListener(this);
 			txtArea2.addKeyListener(this);
 		}
 	}
-	
+
 	// java undo and redo action classes
-	class UndoHandler implements UndoableEditListener
-	{
-	  /**
-	   * Messaged when the Document has created an edit, the edit is added to
-	   * <code>undoManager</code>, an instance of UndoManager.
-	   */
-	  public void undoableEditHappened(UndoableEditEvent e)
-	  {
-	    undoManager.addEdit(e.getEdit());
-	    undoAction1.update(); undoAction2.update();
-	    redoAction1.update(); redoAction2.update();
-	  }
+	class UndoHandler implements UndoableEditListener {
+		/**
+		 * Messaged when the Document has created an edit, the edit is added to
+		 * <code>undoManager</code>, an instance of UndoManager.
+		 */
+		public void undoableEditHappened(UndoableEditEvent e) {
+			undoManager.addEdit(e.getEdit());
+			undoAction1.update();
+			undoAction2.update();
+			redoAction1.update();
+			redoAction2.update();
+		}
 
 	}
 
-	class UndoAction extends AbstractAction
-	{
-	  public UndoAction()
-	  {
-	    super("Undo");
-	    setEnabled(false);
-	  }
+	class UndoAction extends AbstractAction {
+		public UndoAction() {
+			super("Undo");
+			setEnabled(false);
+		}
 
-	  public void actionPerformed(ActionEvent e)
-	  {
-	    try
-	    {
-	      undoManager.undo();
-	    }
-	    catch (CannotUndoException ex)
-	    {
-	      // TODO deal with this
-	      //ex.printStackTrace();
-	    }
-	    update();
-	    redoAction1.update();
-	    redoAction2.update();
-	  }
+		public void actionPerformed(ActionEvent e) {
+			try {
+				undoManager.undo();
+			} catch (CannotUndoException ex) {
+				// TODO deal with this
+				// ex.printStackTrace();
+			}
+			update();
+			redoAction1.update();
+			redoAction2.update();
+		}
 
-	  protected void update()
-	  {
-	    if (undoManager.canUndo())
-	    {
-	      setEnabled(true);
-	      putValue(Action.NAME, undoManager.getUndoPresentationName());
-	    }
-	    else
-	    {
-	      setEnabled(false);
-	      putValue(Action.NAME, "Undo");
-	    }
-	  }
+		protected void update() {
+			if (undoManager.canUndo()) {
+				setEnabled(true);
+				putValue(Action.NAME, undoManager.getUndoPresentationName());
+			} else {
+				setEnabled(false);
+				putValue(Action.NAME, "Undo");
+			}
+		}
 	}
 
-	class RedoAction extends AbstractAction
-	{
-	  public RedoAction()
-	  {
-	    super("Redo");
-	    setEnabled(false);
-	  }
+	class RedoAction extends AbstractAction {
+		public RedoAction() {
+			super("Redo");
+			setEnabled(false);
+		}
 
-	  public void actionPerformed(ActionEvent e)
-	  {
-	    try
-	    {
-	      undoManager.redo();
-	    }
-	    catch (CannotRedoException ex)
-	    {
-	      // TODO deal with this
-	      ex.printStackTrace();
-	    }
-	    update();
-	    undoAction1.update();
-	    undoAction2.update();
-	  }
+		public void actionPerformed(ActionEvent e) {
+			try {
+				undoManager.redo();
+			} catch (CannotRedoException ex) {
+				// TODO deal with this
+				ex.printStackTrace();
+			}
+			update();
+			undoAction1.update();
+			undoAction2.update();
+		}
 
-	  protected void update()
-	  {
-	    if (undoManager.canRedo())
-	    {
-	      setEnabled(true);
-	      putValue(Action.NAME, undoManager.getRedoPresentationName());
-	    }
-	    else
-	    {
-	      setEnabled(false);
-	      putValue(Action.NAME, "Redo");
-	    }
-	  }
+		protected void update() {
+			if (undoManager.canRedo()) {
+				setEnabled(true);
+				putValue(Action.NAME, undoManager.getRedoPresentationName());
+			} else {
+				setEnabled(false);
+				putValue(Action.NAME, "Redo");
+			}
+		}
 	}
 
-	
+	class MouseEvent implements MouseListener {
+		public MouseEvent() {
+			txtArea1.addMouseListener(this);
+			txtArea2.addMouseListener(this);
+		}
+
+		public void mouseClicked(java.awt.event.MouseEvent arg0) {
+			// TODO Auto-generated method stub
+			mouseClickIndex1 = txtArea1.getSelectionStart();
+			mouseClickIndex2 = txtArea2.getSelectionStart();
+		}
+
+		public void mouseEntered(java.awt.event.MouseEvent arg0) {
+			// TODO Auto-generated method stub
+
+		}
+
+		public void mouseExited(java.awt.event.MouseEvent arg0) {
+			// TODO Auto-generated method stub
+
+		}
+
+		public void mousePressed(java.awt.event.MouseEvent arg0) {
+			// TODO Auto-generated method stub
+
+		}
+
+		public void mouseReleased(java.awt.event.MouseEvent arg0) {
+			// TODO Auto-generated method stub
+
+		}
+
+	}
+
 	class MenuActionListener implements ActionListener {
 
 		public void actionPerformed(ActionEvent e) {
-			
+
 			/////////////////////////////////
 			String cmd = e.getActionCommand();
 			switch (cmd) {
@@ -253,7 +275,7 @@ public class simpleMergeInterface extends JFrame {
 
 				String dfName1 = files[0].getPath();
 				String dfName2 = files[1].getPath();
-				
+
 				try {
 					BufferedReader reader = new BufferedReader(new FileReader(dfName1));
 					txtArea1.setText("");
@@ -263,30 +285,43 @@ public class simpleMergeInterface extends JFrame {
 						txtArea1.append(line + "\n"); // 한줄씩 TextArea에 추가
 					}
 					reader.close();
-					
+
 					setTitle(openDialog1.getFile());
 					BufferedReader reader2 = new BufferedReader(new FileReader(dfName2));
 					txtArea2.setText("");
-					
+
 					while ((line = reader2.readLine()) != null) {
 						txtArea2.append(line + "\n"); // 한줄씩 TextArea에 추가
 					}
 					reader2.close();
-					
-					checkDiff();
+
+					checkDiff(txtArea1, txtArea2);
 					for (diff_match_patch.Diff d : linkDiff) {
 						if (d.operation == diff_match_patch.Operation.DELETE
 								|| d.operation == diff_match_patch.Operation.EQUAL) {
 							txtArea1.append(d.text);
 						}
 					}
+					int p0 = 0;
+					int p1 = 0;
+					int index = 0;
+					leftDiffIndex.clear();
+					// leftDiffIndex = new ArrayList<int[]>();
 					for (diff_match_patch.Diff d : linkDiff) {
-						if (d.operation == diff_match_patch.Operation.DELETE) {
-							System.out.println(d.text);
-							int p0 = txtArea1.getText().indexOf(d.text);
-							int p1 = p0 + d.text.length();
-							highlighter1.addHighlight(p0, p1, painterY);
+						if (d.operation == diff_match_patch.Operation.DELETE
+								|| d.operation == diff_match_patch.Operation.EQUAL) {
+							p1 = p0 + d.text.length();
+							if (d.operation == diff_match_patch.Operation.DELETE) {
+								int[] p = new int[3];
+								p[2] = index;
+								p[0] = p0;
+								p[1] = p1;
+								leftDiffIndex.add(p);
+								highlighter1.addHighlight(p0, p1, painterY);
+							}
+							p0 = p1;
 						}
+						index++;
 					}
 
 					for (diff_match_patch.Diff d : linkDiff) {
@@ -295,14 +330,31 @@ public class simpleMergeInterface extends JFrame {
 							txtArea2.append(d.text);
 						}
 					}
+					p0 = 0;
+					p1 = 0;
+					index = 0;
+					rightDiffIndex.clear();
+					// rightDiffIndex = new ArrayList<int[]>();
 					for (diff_match_patch.Diff d : linkDiff) {
-						if (d.operation == diff_match_patch.Operation.INSERT) {
-							System.out.println(d.text);
-							int p0 = txtArea2.getText().indexOf(d.text);
-							int p1 = p0 + d.text.length();
-							highlighter2.addHighlight(p0, p1, painterY);
+						if (d.operation == diff_match_patch.Operation.INSERT
+								|| d.operation == diff_match_patch.Operation.EQUAL) {
+							p1 = p0 + d.text.length();
+							if (d.operation == diff_match_patch.Operation.INSERT) {
+								int[] p = new int[3];
+								p[2] = index;
+								p[0] = p0;
+								p[1] = p1;
+								rightDiffIndex.add(p);
+								highlighter2.addHighlight(p0, p1, painterY);
+							}
+							p0 = p1;
 						}
+						index++;
 					}
+					// for(int i=0;i<leftDiffIndex.size();i++){
+					// System.out.println(leftDiffIndex.get(i)[0]+"
+					// "+leftDiffIndex.get(i)[1]);
+					// }
 				} catch (Exception e2) {
 					System.out.println("ERROR : OPEN LEFT FILE");
 				}
@@ -311,8 +363,7 @@ public class simpleMergeInterface extends JFrame {
 				if (files[0].getPath() == null)
 					return; // 이걸빼면 취소를 해도 저장이됨
 				try {
-					BufferedWriter writer = new BufferedWriter(
-							new FileWriter(files[0].getPath()));
+					BufferedWriter writer = new BufferedWriter(new FileWriter(files[0].getPath()));
 					writer.write(txtArea1.getText());
 					writer.close();
 					setTitle(files[0].getName());
@@ -322,8 +373,7 @@ public class simpleMergeInterface extends JFrame {
 				if (files[1].getPath() == null)
 					return; // 이걸빼면 취소를 해도 저장이됨
 				try {
-					BufferedWriter writer = new BufferedWriter(
-							new FileWriter(files[1].getPath()));
+					BufferedWriter writer = new BufferedWriter(new FileWriter(files[1].getPath()));
 					writer.write(txtArea2.getText());
 					writer.close();
 					setTitle(files[1].getName());
@@ -371,7 +421,55 @@ public class simpleMergeInterface extends JFrame {
 				}
 				// save changed file in the same file route, name
 				break;
-
+			case "Merge to Right":
+				if (mouseClickIndex1 > mouseClickIndex2) {
+					for (int i = 0; i < leftDiffIndex.size(); i++) {
+						if (mouseClickIndex1 >= leftDiffIndex.get(i)[0]
+								&& mouseClickIndex1 <= leftDiffIndex.get(i)[1]) {
+							
+								txtArea2.replaceRange(
+										linkDiff.get(leftDiffIndex.get(i)[2]).text,
+										rightDiffIndex.get(i)[0], rightDiffIndex.get(i)[1]);
+							 
+							break;
+						}
+					}
+				} else {
+					for (int i = 0; i < rightDiffIndex.size(); i++) {
+						if (mouseClickIndex2 >= rightDiffIndex.get(i)[0]
+								&& mouseClickIndex2 <= rightDiffIndex.get(i)[1]) {
+							
+								txtArea2.replaceRange(linkDiff.get(leftDiffIndex.get(i)[2]).text,rightDiffIndex.get(i)[0], rightDiffIndex.get(i)[1]);
+							
+							break;
+						}
+					}
+				}
+				break;
+			case "Merge to Left":
+				if (mouseClickIndex1 > mouseClickIndex2) {
+					for (int i = 0; i < leftDiffIndex.size(); i++) {
+						if (mouseClickIndex1 >= leftDiffIndex.get(i)[0]
+								&& mouseClickIndex1 <= leftDiffIndex.get(i)[1]) {
+							
+								txtArea1.replaceRange(linkDiff.get(rightDiffIndex.get(i)[2]).text,
+										leftDiffIndex.get(i)[0], leftDiffIndex.get(i)[1]);
+							
+							break;
+						}
+					}
+				} else {
+					for (int i = 0; i < rightDiffIndex.size(); i++) {
+						if (mouseClickIndex2 >= rightDiffIndex.get(i)[0]
+								&& mouseClickIndex2 <= rightDiffIndex.get(i)[1]) {
+								txtArea1.replaceRange(linkDiff.get(rightDiffIndex.get(i)[2]).text,
+										leftDiffIndex.get(i)[0], leftDiffIndex.get(i)[1]);
+							
+							break;
+						}
+					}
+				}
+				break;
 			}
 		}
 
@@ -391,7 +489,7 @@ public class simpleMergeInterface extends JFrame {
 
 			scrollPane1 = new JScrollPane(txtArea1);
 			scrollPane2 = new JScrollPane(txtArea2);
-			
+
 			scrollPane1.getVerticalScrollBar().setModel(scrollPane2.getVerticalScrollBar().getModel());
 			scrollPane1.setAutoscrolls(true);
 			scrollPane2.setAutoscrolls(true);
@@ -409,11 +507,11 @@ public class simpleMergeInterface extends JFrame {
 
 			KeyStroke undoKeystroke = KeyStroke.getKeyStroke(KeyEvent.VK_Z, Event.META_MASK);
 			KeyStroke redoKeystroke = KeyStroke.getKeyStroke(KeyEvent.VK_Y, Event.META_MASK);
-			
+
 			undoAction1 = new UndoAction();
 			txtArea1.getInputMap().put(undoKeystroke, "undoKeystroke");
 			txtArea1.getActionMap().put("undoKeystroke", undoAction1);
-			
+
 			redoAction1 = new RedoAction();
 			txtArea1.getInputMap().put(redoKeystroke, "redoKeystroke");
 			txtArea1.getActionMap().put("redoKeystroke", redoAction1);
@@ -421,7 +519,7 @@ public class simpleMergeInterface extends JFrame {
 			undoAction2 = new UndoAction();
 			txtArea2.getInputMap().put(undoKeystroke, "undoKeystroke");
 			txtArea2.getActionMap().put("undoKeystroke", undoAction2);
-			
+
 			redoAction2 = new RedoAction();
 			txtArea2.getInputMap().put(redoKeystroke, "redoKeystroke");
 			txtArea2.getActionMap().put("redoKeystroke", redoAction2);
@@ -440,17 +538,17 @@ public class simpleMergeInterface extends JFrame {
 			fileMenu.addSeparator();
 			// printItem = fileMenu.add("Print");
 
-			// Merge menu 
+			// Merge menu
 			JMenu mergeMenu = new JMenu("Merge");
 			mergeMenu.setMnemonic('M');
 			mergeItem1 = mergeMenu.add("Merge to Right");
 			mergeItem2 = mergeMenu.add("Merge to Left");
-			
+
 			// Edit menu
 			JMenu editMenu = new JMenu("Edit");
 			editMenu.setMnemonic('E');
-			//undoMenuItem = editMenu.add("Undo");
-			//redoMenuItem = editMenu.add("Redo");
+			// undoMenuItem = editMenu.add("Undo");
+			// redoMenuItem = editMenu.add("Redo");
 			undoMenuItem = new JMenuItem(undoAction1);
 			redoMenuItem = new JMenuItem(redoAction1);//
 
@@ -470,11 +568,12 @@ public class simpleMergeInterface extends JFrame {
 			saveItem.addActionListener(this);
 			saveItem1.addActionListener(this);
 			saveItem2.addActionListener(this);
+
 		}
 
 	}
 
-	void checkDiff() {
+	void checkDiff(JTextArea txtArea1, JTextArea txtArea2) {
 		if (txtArea1.getText() != null & txtArea2.getText() != null) {
 			linkDiff = diffMatchPatch.diff_main(txtArea1.getText(), txtArea2.getText());
 			diffMatchPatch.diff_cleanupSemantic(linkDiff);
@@ -488,73 +587,73 @@ public class simpleMergeInterface extends JFrame {
 				insertNum = -1;
 				deleteCount = 0;
 				insertCount = 0;
-				if(i==0){
-				if (linkDiff.get(i).operation == diff_match_patch.Operation.DELETE) {
-					if (linkDiff.get(i + 1).operation == diff_match_patch.Operation.INSERT) {
-						// 맞는게 있음
-						delete = linkDiff.get(i).text;
-						insert = linkDiff.get(i + 1).text;
-						while (true) {
-							deleteNum = delete.indexOf("\n", deleteNum + 1);
-							if (deleteNum != -1) {
-								deleteCount++;
-							} else
-								break;
+				if (i == 0) {
+					if (linkDiff.get(i).operation == diff_match_patch.Operation.DELETE) {
+						if (linkDiff.get(i + 1).operation == diff_match_patch.Operation.INSERT) {
+							// 맞는게 있음
+							delete = linkDiff.get(i).text;
+							insert = linkDiff.get(i + 1).text;
+							while (true) {
+								deleteNum = delete.indexOf("\n", deleteNum + 1);
+								if (deleteNum != -1) {
+									deleteCount++;
+								} else
+									break;
+							}
+							while (true) {
+								insertNum = insert.indexOf("\n", insertNum + 1);
+								if (insertNum != -1) {
+									insertCount++;
+								} else
+									break;
+							}
+							if (deleteCount > insertCount) {
+								for (int k = 0; k < deleteCount - insertCount; k++) {
+									insert = insert + "\n";
+								}
+								linkDiff.get(i + 1).text = insert;
+							}
+							if (insertCount > deleteCount) {
+								for (int l = 0; l < insertCount - deleteCount; l++) {
+									delete = delete + "\n";
+								}
+								linkDiff.get(i).text = delete;
+							}
+
+						} else {
+							// delete만 있음
+							delete = linkDiff.get(i).text;
+							while (true) {
+								deleteNum = delete.indexOf("\n", deleteNum + 1);
+								if (deleteNum != -1) {
+									deleteCount++;
+								} else
+									break;
+							}
+							for (int k = 0; k < deleteCount; k++) {
+								insert = insert + "\n";
+							}
+							linkDiff.add(i + 1, new diff_match_patch.Diff(diff_match_patch.Operation.INSERT, insert));
 						}
+
+					}
+					if (linkDiff.get(i).operation == diff_match_patch.Operation.INSERT) {// insert만
+																							// 있음
+						insert = linkDiff.get(i).text;
 						while (true) {
-							insertNum = delete.indexOf("\n", deleteNum + 1);
+							insertNum = insert.indexOf("\n", insertNum + 1);
 							if (insertNum != -1) {
 								insertCount++;
 							} else
 								break;
 						}
-						if (deleteCount > insertCount) {
-							for (int k = 0; k < deleteCount - insertCount; k++) {
-								insert = insert + "\n";
-							}
-							linkDiff.get(i + 1).text = insert;
+						for (int k = 0; k < insertCount; k++) {
+							delete = delete + "\n";
 						}
-						if (insertCount < deleteCount) {
-							for (int l = 0; l < insertCount - deleteCount; l++) {
-								delete = delete + "\n";
-							}
-							linkDiff.get(i).text = delete;
-						}
+						linkDiff.add(i, new diff_match_patch.Diff(diff_match_patch.Operation.DELETE, delete));
+					}
+				}
 
-					} else {
-						// delete만 있음
-						delete = linkDiff.get(i).text;
-						while (true) {
-							deleteNum = delete.indexOf("\n", deleteNum + 1);
-							if (deleteNum != -1) {
-								deleteCount++;
-							} else
-								break;
-						}
-						for (int k = 0; k < deleteCount; k++) {
-							insert = insert + "\n";
-						}
-						linkDiff.add(i + 1, new diff_match_patch.Diff(diff_match_patch.Operation.INSERT, insert));
-					}
-
-				}
-				if (linkDiff.get(i).operation == diff_match_patch.Operation.INSERT) {// insert만
-																							// 있음
-					insert = linkDiff.get(i).text;
-					while (true) {
-						deleteNum = insert.indexOf("\n", deleteNum + 1);
-						if (insertNum != -1) {
-							insertCount++;
-						} else
-							break;
-					}
-					for (int k = 0; k < insertCount; k++) {
-						delete = delete + "\n";
-					}
-					linkDiff.add(i, new diff_match_patch.Diff(diff_match_patch.Operation.DELETE, delete));
-				}
-				}
-				
 				if (linkDiff.get(i).operation == diff_match_patch.Operation.EQUAL) {
 					if (linkDiff.get(i + 1).operation == diff_match_patch.Operation.DELETE) {
 						if (linkDiff.get(i + 2).operation == diff_match_patch.Operation.INSERT) {
@@ -569,7 +668,7 @@ public class simpleMergeInterface extends JFrame {
 									break;
 							}
 							while (true) {
-								insertNum = delete.indexOf("\n", deleteNum + 1);
+								insertNum = insert.indexOf("\n", insertNum + 1);
 								if (insertNum != -1) {
 									insertCount++;
 								} else
@@ -581,7 +680,7 @@ public class simpleMergeInterface extends JFrame {
 								}
 								linkDiff.get(i + 2).text = insert;
 							}
-							if (insertCount < deleteCount) {
+							if (insertCount > deleteCount) {
 								for (int l = 0; l < insertCount - deleteCount; l++) {
 									delete = delete + "\n";
 								}
@@ -609,7 +708,7 @@ public class simpleMergeInterface extends JFrame {
 																								// 있음
 						insert = linkDiff.get(i + 1).text;
 						while (true) {
-							deleteNum = insert.indexOf("\n", deleteNum + 1);
+							insertNum = insert.indexOf("\n", insertNum + 1);
 							if (insertNum != -1) {
 								insertCount++;
 							} else
