@@ -22,6 +22,7 @@ import javax.swing.JTextArea;
 import javax.swing.JScrollPane;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollBar;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.ButtonGroup;
@@ -56,7 +57,7 @@ public class simpleMergeInterface extends JFrame {
 	private JTextArea txtArea1, txtArea2;
 	private JScrollPane scrollPane1;
 	private JScrollPane scrollPane2;
-
+	JScrollBar sb;
 	boolean isLeft = false, isRight = false;
 
 	private diff_match_patch diffMatchPatch = new diff_match_patch();
@@ -64,7 +65,8 @@ public class simpleMergeInterface extends JFrame {
 	private ArrayList<int[]> leftDiffIndex = new ArrayList<int[]>(), rightDiffIndex = new ArrayList<int[]>();
 
 	private int mouseClickIndex1, mouseClickIndex2;
-
+	private boolean isLeftClick, isRightClick;
+	private int m1 = 0, m2 = 0;
 	private JMenuBar menuBar = new JMenuBar(); // Window Menu Bar
 	private JMenuItem openItem, openItem1, openItem2, saveItem, saveItem1, saveItem2, mergeItem1, mergeItem2,
 			undoMenuItem, redoMenuItem;
@@ -94,8 +96,12 @@ public class simpleMergeInterface extends JFrame {
 	};
 	Runnable doScroll2 = new Runnable() {
 		public void run() {
-			txtArea1.setCaretPosition(txtArea1.getDocument().getLength());
-			txtArea2.setCaretPosition(txtArea2.getDocument().getLength());
+			if(isLeftClick){
+				txtArea1.setCaretPosition(sb.getValue());
+			}
+			else{
+				txtArea2.setCaretPosition(sb.getValue());
+			}
 		}
 	};
 
@@ -226,15 +232,8 @@ public class simpleMergeInterface extends JFrame {
 	}
 
 	class MouseEvent implements MouseListener {
-		public MouseEvent() {
-			txtArea1.addMouseListener(this);
-			txtArea2.addMouseListener(this);
-		}
-
 		public void mouseClicked(java.awt.event.MouseEvent arg0) {
 			// TODO Auto-generated method stub
-			mouseClickIndex1 = txtArea1.getSelectionStart();
-			mouseClickIndex2 = txtArea2.getSelectionStart();
 		}
 
 		public void mouseEntered(java.awt.event.MouseEvent arg0) {
@@ -260,7 +259,7 @@ public class simpleMergeInterface extends JFrame {
 	}
 
 	class MenuActionListener implements ActionListener {
-
+		int m1=0, m2=0;
 		public void actionPerformed(ActionEvent e) {
 
 			/////////////////////////////////
@@ -296,65 +295,6 @@ public class simpleMergeInterface extends JFrame {
 					reader2.close();
 
 					checkDiff(txtArea1, txtArea2);
-					for (diff_match_patch.Diff d : linkDiff) {
-						if (d.operation == diff_match_patch.Operation.DELETE
-								|| d.operation == diff_match_patch.Operation.EQUAL) {
-							txtArea1.append(d.text);
-						}
-					}
-					int p0 = 0;
-					int p1 = 0;
-					int index = 0;
-					leftDiffIndex.clear();
-					// leftDiffIndex = new ArrayList<int[]>();
-					for (diff_match_patch.Diff d : linkDiff) {
-						if (d.operation == diff_match_patch.Operation.DELETE
-								|| d.operation == diff_match_patch.Operation.EQUAL) {
-							p1 = p0 + d.text.length();
-							if (d.operation == diff_match_patch.Operation.DELETE) {
-								int[] p = new int[3];
-								p[2] = index;
-								p[0] = p0;
-								p[1] = p1;
-								leftDiffIndex.add(p);
-								highlighter1.addHighlight(p0, p1, painterY);
-							}
-							p0 = p1;
-						}
-						index++;
-					}
-
-					for (diff_match_patch.Diff d : linkDiff) {
-						if (d.operation == diff_match_patch.Operation.INSERT
-								|| d.operation == diff_match_patch.Operation.EQUAL) {
-							txtArea2.append(d.text);
-						}
-					}
-					p0 = 0;
-					p1 = 0;
-					index = 0;
-					rightDiffIndex.clear();
-					// rightDiffIndex = new ArrayList<int[]>();
-					for (diff_match_patch.Diff d : linkDiff) {
-						if (d.operation == diff_match_patch.Operation.INSERT
-								|| d.operation == diff_match_patch.Operation.EQUAL) {
-							p1 = p0 + d.text.length();
-							if (d.operation == diff_match_patch.Operation.INSERT) {
-								int[] p = new int[3];
-								p[2] = index;
-								p[0] = p0;
-								p[1] = p1;
-								rightDiffIndex.add(p);
-								highlighter2.addHighlight(p0, p1, painterY);
-							}
-							p0 = p1;
-						}
-						index++;
-					}
-					// for(int i=0;i<leftDiffIndex.size();i++){
-					// System.out.println(leftDiffIndex.get(i)[0]+"
-					// "+leftDiffIndex.get(i)[1]);
-					// }
 				} catch (Exception e2) {
 					System.out.println("ERROR : OPEN LEFT FILE");
 				}
@@ -422,39 +362,46 @@ public class simpleMergeInterface extends JFrame {
 				// save changed file in the same file route, name
 				break;
 			case "Merge to Right":
-				if (mouseClickIndex1 > mouseClickIndex2) {
+				if (isLeftClick) {
 					for (int i = 0; i < leftDiffIndex.size(); i++) {
 						if (mouseClickIndex1 >= leftDiffIndex.get(i)[0]
 								&& mouseClickIndex1 <= leftDiffIndex.get(i)[1]) {
-							
 								txtArea2.replaceRange(
 										linkDiff.get(leftDiffIndex.get(i)[2]).text,
 										rightDiffIndex.get(i)[0], rightDiffIndex.get(i)[1]);
-							 
+
+								sb = scrollPane1.getVerticalScrollBar();
+								checkDiff(txtArea1, txtArea2);
+								SwingUtilities.invokeLater(doScroll2);
 							break;
+							
 						}
 					}
+					
 				} else {
 					for (int i = 0; i < rightDiffIndex.size(); i++) {
 						if (mouseClickIndex2 >= rightDiffIndex.get(i)[0]
 								&& mouseClickIndex2 <= rightDiffIndex.get(i)[1]) {
-							
 								txtArea2.replaceRange(linkDiff.get(leftDiffIndex.get(i)[2]).text,rightDiffIndex.get(i)[0], rightDiffIndex.get(i)[1]);
-							
+
+								sb = scrollPane1.getVerticalScrollBar();
+								checkDiff(txtArea1, txtArea2);
+								SwingUtilities.invokeLater(doScroll2);
 							break;
 						}
 					}
 				}
 				break;
 			case "Merge to Left":
-				if (mouseClickIndex1 > mouseClickIndex2) {
+				if (isLeftClick) {
 					for (int i = 0; i < leftDiffIndex.size(); i++) {
 						if (mouseClickIndex1 >= leftDiffIndex.get(i)[0]
 								&& mouseClickIndex1 <= leftDiffIndex.get(i)[1]) {
-							
 								txtArea1.replaceRange(linkDiff.get(rightDiffIndex.get(i)[2]).text,
 										leftDiffIndex.get(i)[0], leftDiffIndex.get(i)[1]);
-							
+								sb = scrollPane1.getVerticalScrollBar();
+								checkDiff(txtArea1, txtArea2);
+								SwingUtilities.invokeLater(doScroll2);
 							break;
 						}
 					}
@@ -464,7 +411,9 @@ public class simpleMergeInterface extends JFrame {
 								&& mouseClickIndex2 <= rightDiffIndex.get(i)[1]) {
 								txtArea1.replaceRange(linkDiff.get(rightDiffIndex.get(i)[2]).text,
 										leftDiffIndex.get(i)[0], leftDiffIndex.get(i)[1]);
-							
+								sb = scrollPane1.getVerticalScrollBar();
+								checkDiff(txtArea1, txtArea2);
+								SwingUtilities.invokeLater(doScroll2);
 							break;
 						}
 					}
@@ -486,7 +435,24 @@ public class simpleMergeInterface extends JFrame {
 
 			txtArea1 = new JTextArea();
 			txtArea2 = new JTextArea();
-
+			txtArea1.addMouseListener(new MouseEvent(){
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e){
+					mouseClickIndex1 = txtArea1.getSelectionStart();
+					isLeftClick = true;
+					isRightClick = false;
+					System.out.println(isLeftClick+" "+isRightClick);
+				}
+			});
+			txtArea2.addMouseListener(new MouseEvent(){
+				@Override
+				public void mouseClicked(java.awt.event.MouseEvent e){
+					mouseClickIndex2 = txtArea2.getSelectionStart();
+					isLeftClick = false;
+					isRightClick = true;
+					System.out.println(isLeftClick+" "+isRightClick);
+				}
+			});
 			scrollPane1 = new JScrollPane(txtArea1);
 			scrollPane2 = new JScrollPane(txtArea2);
 
@@ -568,6 +534,8 @@ public class simpleMergeInterface extends JFrame {
 			saveItem.addActionListener(this);
 			saveItem1.addActionListener(this);
 			saveItem2.addActionListener(this);
+			mergeItem1.addActionListener(this);
+			mergeItem2.addActionListener(this);
 
 		}
 
@@ -724,6 +692,71 @@ public class simpleMergeInterface extends JFrame {
 			}
 			txtArea1.setText("");
 			txtArea2.setText("");
+		}
+		for (diff_match_patch.Diff d : linkDiff) {
+			if (d.operation == diff_match_patch.Operation.DELETE
+					|| d.operation == diff_match_patch.Operation.EQUAL) {
+				txtArea1.append(d.text);
+			}
+		}
+		int p0 = 0;
+		int p1 = 0;
+		int index = 0;
+		//leftDiffIndex.clear();
+		leftDiffIndex = new ArrayList<int[]>();
+		for (diff_match_patch.Diff d : linkDiff) {
+			if (d.operation == diff_match_patch.Operation.DELETE
+					|| d.operation == diff_match_patch.Operation.EQUAL) {
+				p1 = p0 + d.text.length();
+				if (d.operation == diff_match_patch.Operation.DELETE) {
+					int[] p = new int[3];
+					p[2] = index;
+					p[0] = p0;
+					p[1] = p1;
+					leftDiffIndex.add(p);
+					try {
+						highlighter1.addHighlight(p0, p1, painterY);
+					} catch (BadLocationException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+				p0 = p1;
+			}
+			index++;
+		}
+
+		for (diff_match_patch.Diff d : linkDiff) {
+			if (d.operation == diff_match_patch.Operation.INSERT
+					|| d.operation == diff_match_patch.Operation.EQUAL) {
+				txtArea2.append(d.text);
+			}
+		}
+		p0 = 0;
+		p1 = 0;
+		index = 0;
+		//rightDiffIndex.clear();
+		rightDiffIndex = new ArrayList<int[]>();
+		for (diff_match_patch.Diff d : linkDiff) {
+			if (d.operation == diff_match_patch.Operation.INSERT
+					|| d.operation == diff_match_patch.Operation.EQUAL) {
+				p1 = p0 + d.text.length();
+				if (d.operation == diff_match_patch.Operation.INSERT) {
+					int[] p = new int[3];
+					p[2] = index;
+					p[0] = p0;
+					p[1] = p1;
+					rightDiffIndex.add(p);
+					try {
+						highlighter2.addHighlight(p0, p1, painterY);
+					} catch (BadLocationException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+				p0 = p1;
+			}
+			index++;
 		}
 	}
 
