@@ -2,8 +2,13 @@ package diff.test;
 
 import static java.awt.event.InputEvent.CTRL_DOWN_MASK;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.FileDialog;
+import java.awt.Font;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
 import java.awt.GridLayout;
+import java.awt.Toolkit;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileReader;
@@ -19,6 +24,7 @@ import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.event.UndoableEditEvent;
@@ -28,6 +34,8 @@ import javax.swing.text.DefaultEditorKit;
 import javax.swing.text.DefaultHighlighter;
 import javax.swing.text.Document;
 import javax.swing.text.Highlighter;
+import javax.swing.text.StyledDocument;
+import javax.swing.text.Highlighter.Highlight;
 import javax.swing.text.Highlighter.HighlightPainter;
 import javax.swing.undo.CannotRedoException;
 import javax.swing.undo.CannotUndoException;
@@ -37,7 +45,6 @@ import java.awt.event.*;
 import java.io.File;
 import diff.test.diff_match_patch;
 
-
 public class simpleMergeInterface extends JFrame {
 	private static final long serialVersionUID = 1L;
 	private JTextArea txtArea1, txtArea2;
@@ -46,18 +53,22 @@ public class simpleMergeInterface extends JFrame {
 	JScrollBar sb;
 	private boolean isLeft = false, isRight = false;
 	private boolean undone = false, redone = false;
-	private int haveMerged = 0;
-	private String temp1, temp2;
 	
+	int haveMerged = 0;
+	String temp1, temp2;
+
 	private diff_match_patch diffMatchPatch = new diff_match_patch();
 	private LinkedList<diff_match_patch.Diff> linkDiff = new LinkedList<diff_match_patch.Diff>();
 	private ArrayList<int[]> leftDiffIndex = new ArrayList<int[]>(), rightDiffIndex = new ArrayList<int[]>();
 
-	private int mouseClickIndex1, mouseClickIndex2;
-	private boolean isLeftClick, isRightClick;
+	private int mouseClickIndex1 = -1, mouseClickIndex2 = -1;
+	private int lastDiffClick1 = -1, lastDiffClick2 = -1;
+	private boolean isLeftClick;
+	private JPopupMenu popup = new JPopupMenu();
+	private JMenuItem pMergeItem1, pMergeItem2;
 	private JMenuBar menuBar = new JMenuBar(); // Window Menu Bar
-	private JMenuItem openItem, openItem1, openItem2, saveItem, saveItem1, saveItem2, mergeItem1, mergeItem2, mergeItem3, mergeItem4,
-			undoItem, redoItem, refItem, cutItem, copyItem, pasteItem;
+	private JMenuItem openItem, saveItem, saveItem1, saveItem2, mergeItem1, mergeItem2, mergeItem3, mergeItem4,
+			undoMenuItem, redoMenuItem, refItem, cutItem, copyItem, pasteItem;
 
 	private HighlightPainter painterY = new DefaultHighlighter.DefaultHighlightPainter(Color.yellow);
 	private HighlightPainter painterP = new DefaultHighlighter.DefaultHighlightPainter(Color.pink);
@@ -72,8 +83,8 @@ public class simpleMergeInterface extends JFrame {
 	private Document editDoc1, editDoc2;
 	protected UndoHandler undoHandler = new UndoHandler();
 	protected UndoManager undoManager = new UndoManager();
-	private UndoAction undoAction = null;
-	private RedoAction redoAction = null;
+	private UndoAction undoAction = null, undoAction2 = null;
+	private RedoAction redoAction = null, redoAction2 = null;
 
 	Runnable doScroll = new Runnable() {
 		public void run() {
@@ -83,10 +94,9 @@ public class simpleMergeInterface extends JFrame {
 	};
 	Runnable doScroll2 = new Runnable() {
 		public void run() {
-			if(isLeftClick){
+			if (isLeftClick) {
 				txtArea1.setCaretPosition(sb.getValue());
-			}
-			else{
+			} else {
 				txtArea2.setCaretPosition(sb.getValue());
 			}
 		}
@@ -150,13 +160,13 @@ public class simpleMergeInterface extends JFrame {
 		 * Messaged when the Document has created an edit, the edit is added to
 		 * <code>undoManager</code>, an instance of UndoManager.
 		 */
-		
+
 		public void undoableEditHappened(UndoableEditEvent e) {
-//			haveMerged = 0;
+			// haveMerged = 0;
 			undoManager.addEdit(e.getEdit());
 			undoAction.update();
 			redoAction.update();
-//			checkDiff(txtArea1, txtArea2);
+			// checkDiff(txtArea1, txtArea2);
 		}
 
 	}
@@ -251,6 +261,7 @@ public class simpleMergeInterface extends JFrame {
 	class MouseEvent implements MouseListener {
 		public void mouseClicked(java.awt.event.MouseEvent arg0) {
 			// TODO Auto-generated method stub
+			
 		}
 
 		public void mouseEntered(java.awt.event.MouseEvent arg0) {
@@ -271,12 +282,16 @@ public class simpleMergeInterface extends JFrame {
 		public void mouseReleased(java.awt.event.MouseEvent arg0) {
 			// TODO Auto-generated method stub
 
+			if (arg0.isPopupTrigger()) {
+				popup.show((Component) arg0.getSource(), arg0.getX(), arg0.getY());
+			}
 		}
 
 	}
 
 	class MenuActionListener implements ActionListener {
-		int m1=0, m2=0;
+		int m1 = 0, m2 = 0;
+
 		public void actionPerformed(ActionEvent e) {
 
 			/////////////////////////////////
@@ -386,25 +401,25 @@ public class simpleMergeInterface extends JFrame {
 						if (mouseClickIndex1 >= leftDiffIndex.get(i)[0]
 								&& mouseClickIndex1 <= leftDiffIndex.get(i)[1]) {
 
-								txtArea2.replaceRange(
-										linkDiff.get(leftDiffIndex.get(i)[2]).text,
-										rightDiffIndex.get(i)[0], rightDiffIndex.get(i)[1]);
-								sb = scrollPane1.getVerticalScrollBar();
-								checkDiff(txtArea1, txtArea2);
-								SwingUtilities.invokeLater(doScroll2);
+							txtArea2.replaceRange(linkDiff.get(leftDiffIndex.get(i)[2]).text, rightDiffIndex.get(i)[0],
+									rightDiffIndex.get(i)[1]);
+							sb = scrollPane1.getVerticalScrollBar();
+							checkDiff(txtArea1, txtArea2);
+							SwingUtilities.invokeLater(doScroll2);
 							break;
 						}
 					}
-					
+
 				} else {
 					for (int i = 0; i < rightDiffIndex.size(); i++) {
 						if (mouseClickIndex2 >= rightDiffIndex.get(i)[0]
 								&& mouseClickIndex2 <= rightDiffIndex.get(i)[1]) {
-								txtArea2.replaceRange(linkDiff.get(leftDiffIndex.get(i)[2]).text,rightDiffIndex.get(i)[0], rightDiffIndex.get(i)[1]);
+							txtArea2.replaceRange(linkDiff.get(leftDiffIndex.get(i)[2]).text, rightDiffIndex.get(i)[0],
+									rightDiffIndex.get(i)[1]);
 
-								sb = scrollPane1.getVerticalScrollBar();
-								checkDiff(txtArea1, txtArea2);
-								SwingUtilities.invokeLater(doScroll2);
+							sb = scrollPane1.getVerticalScrollBar();
+							checkDiff(txtArea1, txtArea2);
+							SwingUtilities.invokeLater(doScroll2);
 							break;
 						}
 					}
@@ -417,11 +432,11 @@ public class simpleMergeInterface extends JFrame {
 					for (int i = 0; i < leftDiffIndex.size(); i++) {
 						if (mouseClickIndex1 >= leftDiffIndex.get(i)[0]
 								&& mouseClickIndex1 <= leftDiffIndex.get(i)[1]) {
-								txtArea1.replaceRange(linkDiff.get(rightDiffIndex.get(i)[2]).text,
-										leftDiffIndex.get(i)[0], leftDiffIndex.get(i)[1]);
-								sb = scrollPane1.getVerticalScrollBar();
-								checkDiff(txtArea1, txtArea2);
-								SwingUtilities.invokeLater(doScroll2);
+							txtArea1.replaceRange(linkDiff.get(rightDiffIndex.get(i)[2]).text, leftDiffIndex.get(i)[0],
+									leftDiffIndex.get(i)[1]);
+							sb = scrollPane1.getVerticalScrollBar();
+							checkDiff(txtArea1, txtArea2);
+							SwingUtilities.invokeLater(doScroll2);
 							break;
 						}
 					}
@@ -429,11 +444,11 @@ public class simpleMergeInterface extends JFrame {
 					for (int i = 0; i < rightDiffIndex.size(); i++) {
 						if (mouseClickIndex2 >= rightDiffIndex.get(i)[0]
 								&& mouseClickIndex2 <= rightDiffIndex.get(i)[1]) {
-								txtArea1.replaceRange(linkDiff.get(rightDiffIndex.get(i)[2]).text,
-										leftDiffIndex.get(i)[0], leftDiffIndex.get(i)[1]);
-								sb = scrollPane1.getVerticalScrollBar();
-								checkDiff(txtArea1, txtArea2);
-								SwingUtilities.invokeLater(doScroll2);
+							txtArea1.replaceRange(linkDiff.get(rightDiffIndex.get(i)[2]).text, leftDiffIndex.get(i)[0],
+									leftDiffIndex.get(i)[1]);
+							sb = scrollPane1.getVerticalScrollBar();
+							checkDiff(txtArea1, txtArea2);
+							SwingUtilities.invokeLater(doScroll2);
 							break;
 						}
 					}
@@ -454,6 +469,72 @@ public class simpleMergeInterface extends JFrame {
 				txtArea1.setText(txtArea2.getText());
 				checkDiff(txtArea1, txtArea2);
 				break;
+			case "Merge to right":
+				haveMerged = 2;
+				temp1 = txtArea2.getText();
+				if (isLeftClick) {
+					for (int i = 0; i < leftDiffIndex.size(); i++) {
+						if (lastDiffClick1 >= leftDiffIndex.get(i)[0] && lastDiffClick1 <= leftDiffIndex.get(i)[1]) {
+
+							txtArea2.replaceRange(linkDiff.get(leftDiffIndex.get(i)[2]).text, rightDiffIndex.get(i)[0],
+									rightDiffIndex.get(i)[1]);
+							sb = scrollPane1.getVerticalScrollBar();
+							checkDiff(txtArea1, txtArea2);
+							SwingUtilities.invokeLater(doScroll2);
+							break;
+						}
+					}
+
+				} else {
+					for (int i = 0; i < rightDiffIndex.size(); i++) {
+						if (lastDiffClick2 >= rightDiffIndex.get(i)[0] && lastDiffClick2 <= rightDiffIndex.get(i)[1]) {
+							txtArea2.replaceRange(linkDiff.get(leftDiffIndex.get(i)[2]).text, rightDiffIndex.get(i)[0],
+									rightDiffIndex.get(i)[1]);
+
+							sb = scrollPane1.getVerticalScrollBar();
+							checkDiff(txtArea1, txtArea2);
+							SwingUtilities.invokeLater(doScroll2);
+							break;
+						}
+					}
+				}
+				break;
+			case "Merge to left":
+				haveMerged = 1;
+				temp1 = txtArea1.getText();
+				if (isLeftClick) {
+					for (int i = 0; i < leftDiffIndex.size(); i++) {
+						if (lastDiffClick1 >= leftDiffIndex.get(i)[0] && lastDiffClick1 <= leftDiffIndex.get(i)[1]) {
+							txtArea1.replaceRange(linkDiff.get(rightDiffIndex.get(i)[2]).text, leftDiffIndex.get(i)[0],
+									leftDiffIndex.get(i)[1]);
+							sb = scrollPane1.getVerticalScrollBar();
+							checkDiff(txtArea1, txtArea2);
+							SwingUtilities.invokeLater(doScroll2);
+							break;
+						}
+					}
+				} else {
+					for (int i = 0; i < rightDiffIndex.size(); i++) {
+						if (lastDiffClick2 >= rightDiffIndex.get(i)[0] && lastDiffClick2 <= rightDiffIndex.get(i)[1]) {
+							txtArea1.replaceRange(linkDiff.get(rightDiffIndex.get(i)[2]).text, leftDiffIndex.get(i)[0],
+									leftDiffIndex.get(i)[1]);
+							sb = scrollPane1.getVerticalScrollBar();
+							checkDiff(txtArea1, txtArea2);
+							SwingUtilities.invokeLater(doScroll2);
+							break;
+						}
+					}
+					undoAction = new UndoAction();
+					redoAction = new RedoAction();
+				}
+				txtArea1.setText(txtArea1.getText());
+				break;
+			case "Cut":
+				break;
+			case "Copy":
+				break;
+			case "Paste":
+				break;
 			case "Refresh":
 				checkDiff(txtArea1, txtArea2);
 				break;
@@ -473,22 +554,68 @@ public class simpleMergeInterface extends JFrame {
 
 			txtArea1 = new JTextArea();
 			txtArea2 = new JTextArea();
-			txtArea1.addMouseListener(new MouseEvent(){
+			txtArea1.setFont(new Font("Arial", Font.PLAIN, 20));
+			txtArea2.setFont(new Font("Arial", Font.PLAIN, 20));
+			txtArea1.addMouseListener(new MouseEvent() {
 				@Override
-				public void mouseClicked(java.awt.event.MouseEvent e){
+				public void mouseClicked(java.awt.event.MouseEvent e) {
 					mouseClickIndex1 = txtArea1.getSelectionStart();
 					isLeftClick = true;
-					isRightClick = false;
-					System.out.println(isLeftClick+" "+isRightClick);
+					highlighter1.removeAllHighlights();
+					highlighter2.removeAllHighlights();
+					for (int i = 0; i < leftDiffIndex.size(); i++) {
+						if (mouseClickIndex1 >= leftDiffIndex.get(i)[0]
+								&& mouseClickIndex1 <= leftDiffIndex.get(i)[1]) {
+							lastDiffClick1 = mouseClickIndex1;
+							try {
+								highlighter1.addHighlight(leftDiffIndex.get(i)[0], leftDiffIndex.get(i)[1], painterP);
+								highlighter2.addHighlight(rightDiffIndex.get(i)[0], rightDiffIndex.get(i)[1], painterP);
+							} catch (BadLocationException e1) {
+								// TODO Auto-generated catch block
+								e1.printStackTrace();
+							}
+						} else {
+							try {
+								highlighter1.addHighlight(leftDiffIndex.get(i)[0], leftDiffIndex.get(i)[1], painterY);
+								highlighter2.addHighlight(rightDiffIndex.get(i)[0], rightDiffIndex.get(i)[1], painterY);
+							} catch (BadLocationException e1) {
+								// TODO Auto-generated catch block
+								e1.printStackTrace();
+							}
+						}
+					}
 				}
+
 			});
-			txtArea2.addMouseListener(new MouseEvent(){
+			txtArea2.addMouseListener(new MouseEvent() {
+
 				@Override
-				public void mouseClicked(java.awt.event.MouseEvent e){
+				public void mouseClicked(java.awt.event.MouseEvent e) {
 					mouseClickIndex2 = txtArea2.getSelectionStart();
 					isLeftClick = false;
-					isRightClick = true;
-					System.out.println(isLeftClick+" "+isRightClick);
+					highlighter1.removeAllHighlights();
+					highlighter2.removeAllHighlights();
+					for (int i = 0; i < rightDiffIndex.size(); i++) {
+						if (mouseClickIndex2 >= rightDiffIndex.get(i)[0]
+								&& mouseClickIndex2 <= rightDiffIndex.get(i)[1]) {
+							lastDiffClick2 = mouseClickIndex2;
+							try {
+								highlighter1.addHighlight(leftDiffIndex.get(i)[0], leftDiffIndex.get(i)[1], painterP);
+								highlighter2.addHighlight(rightDiffIndex.get(i)[0], rightDiffIndex.get(i)[1], painterP);
+							} catch (BadLocationException e1) {
+								// TODO Auto-generated catch block
+								e1.printStackTrace();
+							}
+						} else {
+							try {
+								highlighter1.addHighlight(leftDiffIndex.get(i)[0], leftDiffIndex.get(i)[1], painterY);
+								highlighter2.addHighlight(rightDiffIndex.get(i)[0], rightDiffIndex.get(i)[1], painterY);
+							} catch (BadLocationException e1) {
+								// TODO Auto-generated catch block
+								e1.printStackTrace();
+							}
+						}
+					}
 				}
 			});
 			scrollPane1 = new JScrollPane(txtArea1);
@@ -497,6 +624,7 @@ public class simpleMergeInterface extends JFrame {
 			scrollPane1.getVerticalScrollBar().setModel(scrollPane2.getVerticalScrollBar().getModel());
 			scrollPane1.setAutoscrolls(true);
 			scrollPane2.setAutoscrolls(true);
+
 			getContentPane().add(scrollPane1);
 			getContentPane().add(scrollPane2);
 
@@ -504,16 +632,15 @@ public class simpleMergeInterface extends JFrame {
 			highlighter2 = txtArea2.getHighlighter();
 
 			editDoc1 = txtArea1.getDocument();
-			editDoc1.addUndoableEditListener(undoHandler);	
+			editDoc1.addUndoableEditListener(undoHandler);
 
 			editDoc2 = txtArea2.getDocument();
 			editDoc2.addUndoableEditListener(undoHandler);
 
-
 			undoAction = new UndoAction();
 			redoAction = new RedoAction();
-//			undoAction2 = new UndoAction();
-//			redoAction2 = new RedoAction();
+			// undoAction2 = new UndoAction();
+			// redoAction2 = new RedoAction();
 
 			JMenu fileMenu = new JMenu("File"); // Create File menu
 			fileMenu.setMnemonic('F'); // Create shortcut
@@ -537,42 +664,45 @@ public class simpleMergeInterface extends JFrame {
 			mergeMenu.addSeparator();
 			mergeItem3 = mergeMenu.add("All Merge to Right");
 			mergeItem4 = mergeMenu.add("All Merge to Left");
-			
+
 			// Edit menu
 			JMenu editMenu = new JMenu("Edit");
 			editMenu.setMnemonic('E');
-			// undoItem = editMenu.add("Undo");
-			// redoItem = editMenu.add("Redo");
-			undoItem = new JMenuItem(undoAction);
-			redoItem = new JMenuItem(redoAction);//
-			
-			editMenu.add(undoItem);
-			editMenu.add(redoItem);
+			// undoMenuItem = editMenu.add("Undo");
+			// redoMenuItem = editMenu.add("Redo");
+			undoMenuItem = new JMenuItem(undoAction);
+			redoMenuItem = new JMenuItem(redoAction);//
+
+			editMenu.add(undoMenuItem);
+			editMenu.add(redoMenuItem);
 			editMenu.addSeparator();
-			
+
 			cutItem = new JMenuItem(new DefaultEditorKit.CutAction());
 			cutItem.setText("Cut");
 			editMenu.add(cutItem);
-			
+
 			copyItem = new JMenuItem(new DefaultEditorKit.CopyAction());
 			copyItem.setText("Copy");
 			editMenu.add(copyItem);
-			
-			pasteItem = new JMenuItem(new DefaultEditorKit.PasteAction()); 
+
+			pasteItem = new JMenuItem(new DefaultEditorKit.PasteAction());
 			pasteItem.setText("Paste");
 			editMenu.add(pasteItem);
 			editMenu.addSeparator();
-			
+
 			refItem = editMenu.add("Refresh");
-			
+
 			menuBar.add(fileMenu);
 			menuBar.add(mergeMenu);
 			menuBar.add(editMenu);
+			
+			pMergeItem1 = popup.add("Merge to right");
+			pMergeItem2 = popup.add("Merge to left");
 
 			openItem.setAccelerator(KeyStroke.getKeyStroke('O', CTRL_DOWN_MASK));
 			saveItem.setAccelerator(KeyStroke.getKeyStroke('S', CTRL_DOWN_MASK));
-			undoItem.setAccelerator(KeyStroke.getKeyStroke('Z', CTRL_DOWN_MASK));
-			redoItem.setAccelerator(KeyStroke.getKeyStroke('Y', CTRL_DOWN_MASK));
+			undoMenuItem.setAccelerator(KeyStroke.getKeyStroke('Z', CTRL_DOWN_MASK));
+			redoMenuItem.setAccelerator(KeyStroke.getKeyStroke('Y', CTRL_DOWN_MASK));
 			refItem.setAccelerator(KeyStroke.getKeyStroke('R', CTRL_DOWN_MASK));
 			cutItem.setAccelerator(KeyStroke.getKeyStroke('X', CTRL_DOWN_MASK));
 			copyItem.setAccelerator(KeyStroke.getKeyStroke('C', CTRL_DOWN_MASK));
@@ -586,6 +716,8 @@ public class simpleMergeInterface extends JFrame {
 			mergeItem2.addActionListener(this);
 			mergeItem3.addActionListener(this);
 			mergeItem4.addActionListener(this);
+			pMergeItem1.addActionListener(this);
+			pMergeItem2.addActionListener(this);
 			refItem.addActionListener(this);
 		}
 
@@ -744,19 +876,17 @@ public class simpleMergeInterface extends JFrame {
 			txtArea2.setText("");
 		}
 		for (diff_match_patch.Diff d : linkDiff) {
-			if (d.operation == diff_match_patch.Operation.DELETE
-					|| d.operation == diff_match_patch.Operation.EQUAL) {
+			if (d.operation == diff_match_patch.Operation.DELETE || d.operation == diff_match_patch.Operation.EQUAL) {
 				txtArea1.append(d.text);
 			}
 		}
 		int p0 = 0;
 		int p1 = 0;
 		int index = 0;
-		//leftDiffIndex.clear();
+		// leftDiffIndex.clear();
 		leftDiffIndex = new ArrayList<int[]>();
 		for (diff_match_patch.Diff d : linkDiff) {
-			if (d.operation == diff_match_patch.Operation.DELETE
-					|| d.operation == diff_match_patch.Operation.EQUAL) {
+			if (d.operation == diff_match_patch.Operation.DELETE || d.operation == diff_match_patch.Operation.EQUAL) {
 				p1 = p0 + d.text.length();
 				if (d.operation == diff_match_patch.Operation.DELETE) {
 					int[] p = new int[3];
@@ -777,19 +907,17 @@ public class simpleMergeInterface extends JFrame {
 		}
 
 		for (diff_match_patch.Diff d : linkDiff) {
-			if (d.operation == diff_match_patch.Operation.INSERT
-					|| d.operation == diff_match_patch.Operation.EQUAL) {
+			if (d.operation == diff_match_patch.Operation.INSERT || d.operation == diff_match_patch.Operation.EQUAL) {
 				txtArea2.append(d.text);
 			}
 		}
 		p0 = 0;
 		p1 = 0;
 		index = 0;
-		//rightDiffIndex.clear();
+		// rightDiffIndex.clear();
 		rightDiffIndex = new ArrayList<int[]>();
 		for (diff_match_patch.Diff d : linkDiff) {
-			if (d.operation == diff_match_patch.Operation.INSERT
-					|| d.operation == diff_match_patch.Operation.EQUAL) {
+			if (d.operation == diff_match_patch.Operation.INSERT || d.operation == diff_match_patch.Operation.EQUAL) {
 				p1 = p0 + d.text.length();
 				if (d.operation == diff_match_patch.Operation.INSERT) {
 					int[] p = new int[3];
@@ -812,7 +940,9 @@ public class simpleMergeInterface extends JFrame {
 
 	public static void main(String[] a) {
 		simpleMergeInterface window = new simpleMergeInterface();
-		window.setBounds(100, 80, 1000, 600);
+		
+		Toolkit tk = Toolkit.getDefaultToolkit();
+		window.setBounds(0, 0, (int)tk.getScreenSize().getWidth(), (int)tk.getScreenSize().getHeight());
 		window.setVisible(true);
 	}
 }
