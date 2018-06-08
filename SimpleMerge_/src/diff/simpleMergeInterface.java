@@ -1,12 +1,9 @@
-package diff.test;
+package diff;
 
 import static java.awt.event.InputEvent.CTRL_DOWN_MASK;
 import java.awt.Color;
 import java.awt.FileDialog;
 import java.awt.GridLayout;
-import java.awt.MenuItem;
-import java.awt.Panel;
-import java.awt.TextArea;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileReader;
@@ -15,13 +12,9 @@ import java.util.LinkedList;
 import java.util.ArrayList;
 import javax.swing.JTextArea;
 import javax.swing.JScrollPane;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
 import javax.swing.JScrollBar;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
-import javax.swing.ButtonGroup;
-import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -42,7 +35,7 @@ import javax.swing.undo.UndoManager;
 
 import java.awt.event.*;
 import java.io.File;
-import diff.test.diff_match_patch;
+import diff.diff_match_patch;
 
 
 public class simpleMergeInterface extends JFrame {
@@ -64,7 +57,7 @@ public class simpleMergeInterface extends JFrame {
 	private boolean isLeftClick, isRightClick;
 	private int m1 = 0, m2 = 0;
 	private JMenuBar menuBar = new JMenuBar(); // Window Menu Bar
-	private JMenuItem openItem, openItem1, openItem2, saveItem, saveItem1, saveItem2, mergeItem1, mergeItem2,
+	private JMenuItem openItem, openItem1, openItem2, saveItem, saveItem1, saveItem2, mergeItem1, mergeItem2, mergeItem3, mergeItem4,
 			undoMenuItem, redoMenuItem, refItem, cutItem, copyItem, pasteItem;
 
 	private HighlightPainter painterY = new DefaultHighlighter.DefaultHighlightPainter(Color.yellow);
@@ -442,6 +435,18 @@ public class simpleMergeInterface extends JFrame {
 				}
 				txtArea1.setText(txtArea1.getText());
 				break;
+			case "All Merge to Right":
+				haveMerged = 2;
+				temp1 = txtArea2.getText();
+				txtArea2.setText(txtArea1.getText());
+				checkDiff(txtArea1, txtArea2);
+				break;
+			case "All Merge to Left":
+				haveMerged = 1;
+				temp1 = txtArea1.getText();
+				txtArea1.setText(txtArea2.getText());
+				checkDiff(txtArea1, txtArea2);
+				break;
 			case "Cut":
 				break;
 			case "Copy":
@@ -528,7 +533,10 @@ public class simpleMergeInterface extends JFrame {
 			mergeMenu.setMnemonic('M');
 			mergeItem1 = mergeMenu.add("Merge to Right");
 			mergeItem2 = mergeMenu.add("Merge to Left");
-
+			mergeMenu.addSeparator();
+			mergeItem3 = mergeMenu.add("All Merge to Right");
+			mergeItem4 = mergeMenu.add("All Merge to Left");
+			
 			// Edit menu
 			JMenu editMenu = new JMenu("Edit");
 			editMenu.setMnemonic('E');
@@ -575,6 +583,8 @@ public class simpleMergeInterface extends JFrame {
 			saveItem2.addActionListener(this);
 			mergeItem1.addActionListener(this);
 			mergeItem2.addActionListener(this);
+			mergeItem3.addActionListener(this);
+			mergeItem4.addActionListener(this);
 			refItem.addActionListener(this);
 		}
 
