@@ -1,12 +1,7 @@
 package diff.test;
 
-import java.awt.FlowLayout;
-
-import static java.awt.event.InputEvent.CTRL_DOWN_MASK;
-import java.awt.BorderLayout;
-import java.awt.Button;
+import static java.awt.event.InputEvent.CTRL_DOWN_MASK;;
 import java.awt.Color;
-import java.awt.Event;
 import java.awt.FileDialog;
 import java.awt.GridLayout;
 import java.awt.MenuItem;
@@ -36,6 +31,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.event.UndoableEditEvent;
 import javax.swing.event.UndoableEditListener;
 import javax.swing.text.BadLocationException;
+import javax.swing.text.DefaultEditorKit;
 import javax.swing.text.DefaultHighlighter;
 import javax.swing.text.Document;
 import javax.swing.text.Highlighter;
@@ -69,7 +65,7 @@ public class simpleMergeInterface extends JFrame {
 	private int m1 = 0, m2 = 0;
 	private JMenuBar menuBar = new JMenuBar(); // Window Menu Bar
 	private JMenuItem openItem, openItem1, openItem2, saveItem, saveItem1, saveItem2, mergeItem1, mergeItem2,
-			undoMenuItem, redoMenuItem, refItem;
+			undoMenuItem, redoMenuItem, refItem, cutItem, copyItem, pasteItem;
 
 	private HighlightPainter painterY = new DefaultHighlighter.DefaultHighlightPainter(Color.yellow);
 	private HighlightPainter painterP = new DefaultHighlighter.DefaultHighlightPainter(Color.pink);
@@ -169,6 +165,7 @@ public class simpleMergeInterface extends JFrame {
 			undoManager.addEdit(e.getEdit());
 			undoAction.update();
 			redoAction.update();
+//			checkDiff(txtArea1, txtArea2);
 		}
 
 	}
@@ -200,7 +197,6 @@ public class simpleMergeInterface extends JFrame {
 				txtArea2.setText(temp1);
 //				haveMerged=0;
 			}
-			checkDiff(txtArea1, txtArea2);
 		}
 
 		protected void update() {
@@ -239,7 +235,6 @@ public class simpleMergeInterface extends JFrame {
 				txtArea2.setText(temp2);
 //				haveMerged=0;
 			}
-			checkDiff(txtArea1, txtArea2);
 		}
 
 		protected void update() {
@@ -447,6 +442,12 @@ public class simpleMergeInterface extends JFrame {
 				}
 				txtArea1.setText(txtArea1.getText());
 				break;
+			case "Cut":
+				break;
+			case "Copy":
+				break;
+			case "Paste":
+				break;
 			case "Refresh":
 				checkDiff(txtArea1, txtArea2);
 				break;
@@ -535,11 +536,24 @@ public class simpleMergeInterface extends JFrame {
 			// redoMenuItem = editMenu.add("Redo");
 			undoMenuItem = new JMenuItem(undoAction);
 			redoMenuItem = new JMenuItem(redoAction);//
-
+			
 			editMenu.add(undoMenuItem);
 			editMenu.add(redoMenuItem);
 			editMenu.addSeparator();
-
+			
+			cutItem = new JMenuItem(new DefaultEditorKit.CutAction());
+			cutItem.setText("Cut");
+			editMenu.add(cutItem);
+			
+			copyItem = new JMenuItem(new DefaultEditorKit.CopyAction());
+			copyItem.setText("Copy");
+			editMenu.add(copyItem);
+			
+			pasteItem = new JMenuItem(new DefaultEditorKit.PasteAction()); 
+			pasteItem.setText("Paste");
+			editMenu.add(pasteItem);
+			editMenu.addSeparator();
+			
 			refItem = editMenu.add("Refresh");
 			
 			menuBar.add(fileMenu);
