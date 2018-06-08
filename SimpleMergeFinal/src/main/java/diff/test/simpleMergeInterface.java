@@ -44,10 +44,10 @@ public class simpleMergeInterface extends JFrame {
 	private JScrollPane scrollPane1;
 	private JScrollPane scrollPane2;
 	JScrollBar sb;
-	boolean isLeft = false, isRight = false;
-	boolean undone = false, redone = false;
-	int haveMerged = 0;
-	String temp1, temp2;
+	private boolean isLeft = false, isRight = false;
+	private boolean undone = false, redone = false;
+	private int haveMerged = 0;
+	private String temp1, temp2;
 	
 	private diff_match_patch diffMatchPatch = new diff_match_patch();
 	private LinkedList<diff_match_patch.Diff> linkDiff = new LinkedList<diff_match_patch.Diff>();
@@ -55,10 +55,9 @@ public class simpleMergeInterface extends JFrame {
 
 	private int mouseClickIndex1, mouseClickIndex2;
 	private boolean isLeftClick, isRightClick;
-	private int m1 = 0, m2 = 0;
 	private JMenuBar menuBar = new JMenuBar(); // Window Menu Bar
 	private JMenuItem openItem, openItem1, openItem2, saveItem, saveItem1, saveItem2, mergeItem1, mergeItem2, mergeItem3, mergeItem4,
-			undoMenuItem, redoMenuItem, refItem, cutItem, copyItem, pasteItem;
+			undoItem, redoItem, refItem, cutItem, copyItem, pasteItem;
 
 	private HighlightPainter painterY = new DefaultHighlighter.DefaultHighlightPainter(Color.yellow);
 	private HighlightPainter painterP = new DefaultHighlighter.DefaultHighlightPainter(Color.pink);
@@ -66,16 +65,15 @@ public class simpleMergeInterface extends JFrame {
 	private Highlighter highlighter1;
 	private Highlighter highlighter2;
 
-	FileDialog openDialog1;
-	FileDialog openDialog2;
-	File[] files;
+	public FileDialog openDialog;
+	public File[] files;
 
 	// undo and redo
 	private Document editDoc1, editDoc2;
 	protected UndoHandler undoHandler = new UndoHandler();
 	protected UndoManager undoManager = new UndoManager();
-	private UndoAction undoAction = null, undoAction2 = null;
-	private RedoAction redoAction = null, redoAction2 = null;
+	private UndoAction undoAction = null;
+	private RedoAction redoAction = null;
 
 	Runnable doScroll = new Runnable() {
 		public void run() {
@@ -95,8 +93,8 @@ public class simpleMergeInterface extends JFrame {
 	};
 
 	public simpleMergeInterface() {
-		openDialog1 = new FileDialog(this, "FileDialog");
-		openDialog1.setMultipleMode(true);
+		openDialog = new FileDialog(this, "FileDialog");
+		openDialog.setMultipleMode(true);
 		MenuActionListener m = new MenuActionListener();
 		TextKeyListener t = new TextKeyListener();
 		MouseEvent mouse = new MouseEvent();
@@ -285,9 +283,9 @@ public class simpleMergeInterface extends JFrame {
 			String cmd = e.getActionCommand();
 			switch (cmd) {
 			case "Open":
-				openDialog1.setDirectory(".");
-				openDialog1.setVisible(true);
-				files = openDialog1.getFiles();
+				openDialog.setDirectory(".");
+				openDialog.setVisible(true);
+				files = openDialog.getFiles();
 				if (files.length != 2)
 					return;
 
@@ -304,7 +302,7 @@ public class simpleMergeInterface extends JFrame {
 					}
 					reader.close();
 
-					setTitle(openDialog1.getFile());
+					setTitle(openDialog.getFile());
 					BufferedReader reader2 = new BufferedReader(new FileReader(dfName2));
 					txtArea2.setText("");
 
@@ -456,12 +454,6 @@ public class simpleMergeInterface extends JFrame {
 				txtArea1.setText(txtArea2.getText());
 				checkDiff(txtArea1, txtArea2);
 				break;
-			case "Cut":
-				break;
-			case "Copy":
-				break;
-			case "Paste":
-				break;
 			case "Refresh":
 				checkDiff(txtArea1, txtArea2);
 				break;
@@ -549,13 +541,13 @@ public class simpleMergeInterface extends JFrame {
 			// Edit menu
 			JMenu editMenu = new JMenu("Edit");
 			editMenu.setMnemonic('E');
-			// undoMenuItem = editMenu.add("Undo");
-			// redoMenuItem = editMenu.add("Redo");
-			undoMenuItem = new JMenuItem(undoAction);
-			redoMenuItem = new JMenuItem(redoAction);//
+			// undoItem = editMenu.add("Undo");
+			// redoItem = editMenu.add("Redo");
+			undoItem = new JMenuItem(undoAction);
+			redoItem = new JMenuItem(redoAction);//
 			
-			editMenu.add(undoMenuItem);
-			editMenu.add(redoMenuItem);
+			editMenu.add(undoItem);
+			editMenu.add(redoItem);
 			editMenu.addSeparator();
 			
 			cutItem = new JMenuItem(new DefaultEditorKit.CutAction());
@@ -579,8 +571,8 @@ public class simpleMergeInterface extends JFrame {
 
 			openItem.setAccelerator(KeyStroke.getKeyStroke('O', CTRL_DOWN_MASK));
 			saveItem.setAccelerator(KeyStroke.getKeyStroke('S', CTRL_DOWN_MASK));
-			undoMenuItem.setAccelerator(KeyStroke.getKeyStroke('Z', CTRL_DOWN_MASK));
-			redoMenuItem.setAccelerator(KeyStroke.getKeyStroke('Y', CTRL_DOWN_MASK));
+			undoItem.setAccelerator(KeyStroke.getKeyStroke('Z', CTRL_DOWN_MASK));
+			redoItem.setAccelerator(KeyStroke.getKeyStroke('Y', CTRL_DOWN_MASK));
 			refItem.setAccelerator(KeyStroke.getKeyStroke('R', CTRL_DOWN_MASK));
 			cutItem.setAccelerator(KeyStroke.getKeyStroke('X', CTRL_DOWN_MASK));
 			copyItem.setAccelerator(KeyStroke.getKeyStroke('C', CTRL_DOWN_MASK));
