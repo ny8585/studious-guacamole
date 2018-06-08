@@ -1,6 +1,6 @@
 package diff.test;
 
-import static java.awt.event.InputEvent.CTRL_DOWN_MASK;;
+import static java.awt.event.InputEvent.CTRL_DOWN_MASK;
 import java.awt.Color;
 import java.awt.FileDialog;
 import java.awt.GridLayout;
@@ -565,6 +565,10 @@ public class simpleMergeInterface extends JFrame {
 			undoMenuItem.setAccelerator(KeyStroke.getKeyStroke('Z', CTRL_DOWN_MASK));
 			redoMenuItem.setAccelerator(KeyStroke.getKeyStroke('Y', CTRL_DOWN_MASK));
 			refItem.setAccelerator(KeyStroke.getKeyStroke('R', CTRL_DOWN_MASK));
+			cutItem.setAccelerator(KeyStroke.getKeyStroke('X', CTRL_DOWN_MASK));
+			copyItem.setAccelerator(KeyStroke.getKeyStroke('C', CTRL_DOWN_MASK));
+			pasteItem.setAccelerator(KeyStroke.getKeyStroke('V', CTRL_DOWN_MASK));
+
 			openItem.addActionListener(this);
 			saveItem.addActionListener(this);
 			saveItem1.addActionListener(this);
